@@ -5,7 +5,9 @@ import sys
 from pathlib import Path
 
 # Collect bin/*.exe files if they exist, skip otherwise
-_bin_dir = Path(__file__).resolve().parent / "bin"
+# SPECPATH is set by PyInstaller to the directory containing the spec file
+_spec_dir = Path(SPECPATH) if "SPECPATH" in dir() else Path(".").resolve()
+_bin_dir = _spec_dir / "bin"
 _binaries = []
 for _exe in sorted(_bin_dir.glob("*.exe")):
     _binaries.append((str(_exe), "bin"))

@@ -128,7 +128,7 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    if not any([args.all, getattr(args, "yt-dlp"), getattr(args, "ffmpeg")]):
+    if not any([args.all, args.yt_dlp, args.ffmpeg]):
         parser.print_help()
         print(
             "\nNo option selected. Use --all to download everything, "
@@ -136,8 +136,8 @@ def main() -> int:
         )
         return 1
 
-    do_ytdlp = args.all or getattr(args, "yt-dlp")
-    do_ffmpeg = args.all or getattr(args, "ffmpeg")
+    do_ytdlp = args.all or args.yt_dlp
+    do_ffmpeg = args.all or args.ffmpeg
 
     try:
         if do_ytdlp:
