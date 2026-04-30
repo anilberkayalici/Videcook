@@ -3,8 +3,10 @@
 import sys
 
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QApplication
 
+from videcook.paths import get_asset_path
 from videcook.ui.main_window import MainWindow
 from videcook.ui.theme import apply_theme
 from videcook.utils.i18n import LanguageManager
@@ -18,6 +20,10 @@ def create_app(argv: list[str] | None = None) -> QApplication:
     app.setApplicationName("Videcook")
     app.setApplicationDisplayName("Videcook")
     app.setOrganizationName("videcook")
+
+    # Application icon (taskbar, Alt+Tab, title bar)
+    icon_path = get_asset_path("videcook.ico")
+    app.setWindowIcon(QIcon(str(icon_path)))
 
     # Enable high-DPI scaling
     app.setHighDpiScaleFactorRoundingPolicy(

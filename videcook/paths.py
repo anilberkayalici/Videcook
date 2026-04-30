@@ -33,3 +33,13 @@ def get_ffmpeg_path() -> Path:
 def get_ffprobe_path() -> Path:
     """Return the expected path to ``ffprobe.exe``."""
     return get_bin_dir() / "ffprobe.exe"
+
+
+def get_assets_dir() -> Path:
+    """Return the ``assets/`` directory."""
+    return get_project_root() / "assets"
+
+
+def get_asset_path(filename: str) -> Path:
+    """Return the path to *filename* inside ``assets/``."""
+    return get_assets_dir() / filename

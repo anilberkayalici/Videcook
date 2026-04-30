@@ -18,6 +18,7 @@ a = Analysis(
     binaries=_binaries,
     datas=[
         ("locales", "locales"),
+        ("assets", "assets"),
         ("README.md", "."),
         ("THIRD_PARTY_LICENSES.md", "."),
     ],
@@ -58,7 +59,7 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=None,
+    icon=str(_spec_dir / "assets" / "videcook.ico"),
 )
 
 coll = COLLECT(

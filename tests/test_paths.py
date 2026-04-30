@@ -4,6 +4,8 @@ import sys
 from pathlib import Path
 
 from videcook.paths import (
+    get_asset_path,
+    get_assets_dir,
     get_bin_dir,
     get_ffmpeg_path,
     get_ffprobe_path,
@@ -53,3 +55,23 @@ class TestPaths:
         """get_bin_dir() returns a Path regardless of file existence."""
         bin_dir = get_bin_dir()
         assert isinstance(bin_dir, Path)
+
+
+class TestAssetPaths:
+    def test_assets_dir_returns_paths_subdir(self) -> None:
+        assets_dir = get_assets_dir()
+        assert assets_dir.name == "assets"
+        assert assets_dir.parent == get_project_root()
+
+    def test_asset_dir_exists(self) -> None:
+        assert get_assets_dir().is_dir()
+
+    def test_get_asset_path_videcook_ico(self) -> None:
+        path = get_asset_path("videcook.ico")
+        assert path.name == "videcook.ico"
+        assert path.parent == get_assets_dir()
+
+    def test_get_asset_path_videcook_png(self) -> None:
+        path = get_asset_path("videcook.png")
+        assert path.name == "videcook.png"
+        assert path.parent == get_assets_dir()
