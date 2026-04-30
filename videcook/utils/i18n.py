@@ -7,6 +7,8 @@ in the project-level locales/ directory. Supports Turkish (default) and English.
 import json
 from pathlib import Path
 
+from videcook.paths import get_project_root
+
 SUPPORTED_LANGUAGES = ("tr", "en")
 DEFAULT_LANGUAGE = "tr"
 FALLBACK_LANGUAGE = "en"
@@ -28,7 +30,7 @@ class LanguageManager:
         self._current_language = DEFAULT_LANGUAGE
 
         if locales_dir is None:
-            locales_dir = Path(__file__).resolve().parent.parent.parent / "locales"
+            locales_dir = get_project_root() / "locales"
         self._locales_dir = Path(locales_dir)
 
         for lang in SUPPORTED_LANGUAGES:

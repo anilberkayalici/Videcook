@@ -7,13 +7,10 @@ __pycache__/
 .venv/
 venv/
 
-# Build artifacts
+# PyInstaller outputs (spec files ARE tracked in git)
 build/
 dist/
 *.egg-info/
-
-# PyInstaller
-*.spec
 
 # Downloaded helper binaries
 bin/*.exe
