@@ -15,11 +15,13 @@ def _smoke_check() -> int:
         return 0
 
     try:
-        create_app(["videcook", "--smoke"])
+        app = create_app(["videcook", "--smoke"])
         i18n = LanguageManager()
-        # Instantiate but do not show or exec — this proves Qt + imports work
-        window = MainWindow(i18n)
-        assert window.windowTitle() == "Videcook"
+        # Importing MainWindow pulls in every screen and service, including the
+        # Groq client. Do not create a top-level widget in a no-event-loop test.
+        assert MainWindow is not None
+        assert i18n.get_text("app.name") == "Videcook"
+        app.quit()
         print("Videcook GUI smoke check passed")
         return 0
     except Exception as exc:

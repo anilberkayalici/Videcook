@@ -12,6 +12,11 @@ build/
 dist/
 release/
 *.egg-info/
+videcook.log
+videcook_prefs.json
+.pytest_cache/
+pytest-cache-files-*/
+.tmp_pytest_*/
 
 # Downloaded helper binaries
 bin/*.exe
@@ -25,3 +30,4 @@ bin/*.7z
 # OS
 .DS_Store
 Thumbs.db
+docs/superpowers/ 

@@ -34,11 +34,16 @@ def validate_url(url: str) -> None:
         raise InvalidUrlError(f"URL must start with http:// or https://, got: {url!r}")
 
 
-def validate_cookie_file(path: Path) -> None:
-    """Check that *path* points to an existing file.
+def validate_cookie_file(path: Path | None) -> None:
+    """Check that *path* points to an existing ``.txt`` file.
+
+    ``None`` is accepted — the download will proceed without cookies.
 
     **The file contents are never read.** Only the existence and type are checked.
     """
+    if path is None:
+        return
+
     if not path.exists():
         raise InvalidCookieFileError(f"Cookie file not found: {path}")
 

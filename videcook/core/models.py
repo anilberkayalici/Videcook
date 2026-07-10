@@ -12,13 +12,34 @@ class DownloadMode(Enum):
     PLAYLIST = auto()
 
 
+class DownloadType(Enum):
+    """Download type — video with merged audio, or audio-only extraction."""
+
+    VIDEO = auto()
+    AUDIO = auto()
+
+
 class QualityOption(Enum):
-    """Video quality presets for the user to choose from."""
+    """Video quality presets."""
 
     BEST = auto()
     P1080 = auto()
     P720 = auto()
     P480 = auto()
+
+
+class AudioFormat(Enum):
+    """Audio container formats for extraction."""
+
+    MP3 = "mp3"
+    M4A = "m4a"
+    OPUS = "opus"
+    AAC = "aac"
+    FLAC = "flac"
+    WAV = "wav"
+
+    def extension(self) -> str:
+        return self.value
 
 
 @dataclass
@@ -30,10 +51,13 @@ class DownloadRequest:
     """
 
     url: str
-    cookie_file: Path
+    cookie_file: Path | None
     output_folder: Path
     quality: QualityOption
     mode: DownloadMode
+    download_type: DownloadType = DownloadType.VIDEO
+    audio_format: AudioFormat = AudioFormat.MP3
+    embed_thumbnail: bool = False
 
 
 @dataclass

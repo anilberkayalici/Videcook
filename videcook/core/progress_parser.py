@@ -31,6 +31,14 @@ _EXTRACT_RE = re.compile(
     r"\[(?P<stage>Extract\w*)\]\s+"
 )
 
+_PLAYLIST_ITEM_RE = re.compile(
+    r"\[download\]\s+Downloading\s+(?:video|item)\s+(?P<current>\d+)\s+of\s+(?P<total>\d+)"
+)
+
+_PLAYLIST_FINISHED_RE = re.compile(
+    r"\[download\]\s+Finished\s+(?:downloading\s+)?playlist:"
+)
+
 
 # ---------------------------------------------------------------------------
 # Public API
@@ -46,11 +54,25 @@ def parse_progress_line(line: str) -> dict[str, Any]:
     if not stripped:
         return {"type": "log", "raw": line}
 
-    # --- destination (checked before progress to avoid false match) ---
+    # --- playlist item (e.g. "[download] Downloading video 3 of 15") ---
+    match = _PLAYLIST_ITEM_RE.search(stripped)
+    if match:
+        return {
+            "type": "playlist_item",
+            "current": int(match.group("current")),
+            "total": int(match.group("total")),
+            "raw": line,
+        }
+
+    # --- playlist finished ---
+    if _PLAYLIST_FINISHED_RE.search(stripped):
+        return {"type": "playlist_finished", "raw": line}
+
+    # --- destination ---
     if _DESTINATION_RE.search(stripped):
         return {"type": "destination", "raw": line}
 
-    # --- download completed (checked before progress — both start same) ---
+    # --- download completed ---
     if _DOWNLOAD_DONE_RE.search(stripped):
         return {"type": "download_completed", "percent": 100.0, "raw": line}
 

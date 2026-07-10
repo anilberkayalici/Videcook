@@ -10,20 +10,19 @@ from PySide6.QtCore import QObject, Signal, Slot
 from videcook.core.command_builder import build_ytdlp_command
 from videcook.core.models import DownloadRequest
 from videcook.core.progress_parser import parse_progress_line
-from videcook.paths import get_ffmpeg_path, get_ytdlp_path
 from videcook.services.binary_locator import check_binaries
 from videcook.services.download_process import (
     create_process,
     stream_lines,
     wait_process,
 )
+from videcook.utils.error_parser import translate_error
 from videcook.utils.i18n import LanguageManager
 
 
 class DownloadWorker(QObject):
     """Off-thread worker that owns a yt-dlp subprocess and streams progress."""
 
-    # -- signals --
     progress_changed = Signal(int)
     status_changed = Signal(str)
     log_message = Signal(str)
@@ -41,15 +40,16 @@ class DownloadWorker(QObject):
         self._i18n = i18n
         self._process = None
         self._cancelled = False
-
-    # ---- public ------------------------------------------------------------
+        self._error_lines: list[str] = []
+        self._playlist_current = 1
+        self._playlist_total = 1
+        self._playlist_is_active = False
 
     @Slot()
     def run(self) -> None:
-        """Entry point — called when the worker thread starts."""
         t = self._i18n.get_text
+        self._error_lines.clear()
 
-        # 1. Check binaries
         self.log_message.emit(t("log.checking_binaries"))
         status = check_binaries()
         self.log_message.emit(status.to_display())
@@ -59,13 +59,12 @@ class DownloadWorker(QObject):
             self.finished.emit(False, msg)
             return
 
-        # 2. Build command
         self.log_message.emit(t("log.building_command"))
         try:
             cmd_result = build_ytdlp_command(
                 self._request,
-                ytdlp_path=get_ytdlp_path(),
-                ffmpeg_location=get_ffmpeg_path().parent,
+                ytdlp_path=status.ytdlp_path,
+                ffmpeg_location=status.ffmpeg_path.parent,
             )
         except Exception as exc:
             self.error_message.emit(str(exc))
@@ -75,7 +74,6 @@ class DownloadWorker(QObject):
         self.log_message.emit(cmd_result.redacted_display)
         self.status_changed.emit(t("status.downloading"))
 
-        # 3. Launch subprocess
         try:
             self._process = create_process(cmd_result.args)
         except Exception as exc:
@@ -84,14 +82,12 @@ class DownloadWorker(QObject):
             self.finished.emit(False, msg)
             return
 
-        # 4. Stream lines
         stream_lines(
             self._process.stdout,
             on_line=self._handle_line,
             check_cancelled=self._is_cancelled,
         )
 
-        # 5. Wait and report
         result = wait_process(self._process, cancelled=self._cancelled)
 
         if result.cancelled:
@@ -106,9 +102,9 @@ class DownloadWorker(QObject):
         else:
             self.status_changed.emit(t("status.error"))
             self.log_message.emit(result.message)
-            self.finished.emit(False, result.message)
+            friendly = self._build_friendly_error(t)
+            self.finished.emit(False, friendly)
 
-        # Clear sensitive state
         self._clear_sensitive_state()
 
     def cancel(self) -> None:
@@ -118,6 +114,14 @@ class DownloadWorker(QObject):
             self._process.terminate()
         self._clear_sensitive_state()
 
+    def _build_friendly_error(self, t) -> str:
+        combined = " ".join(self._error_lines) if self._error_lines else ""
+        key = translate_error(combined)
+        if key:
+            return t(key)
+        last = self._error_lines[-1] if self._error_lines else t("error.unknown")
+        return f"{t('error.download_failed').format(message=last)}"
+
     # ---- internal -----------------------------------------------------------
 
     def _is_cancelled(self) -> bool:
@@ -126,30 +130,82 @@ class DownloadWorker(QObject):
     def _handle_line(self, line: str) -> None:
         parsed = parse_progress_line(line)
 
-        if parsed["type"] == "download_progress":
+        if parsed["type"] == "playlist_item":
+            self._playlist_current = parsed["current"]
+            self._playlist_total = parsed["total"]
+            self._playlist_is_active = True
+            t = self._i18n.get_text
+            self.log_message.emit(
+                t("log.playlist_video").format(
+                    current=self._playlist_current,
+                    total=self._playlist_total,
+                )
+            )
+            self.status_changed.emit(
+                f"Video {self._playlist_current}/{self._playlist_total}"
+            )
+
+        elif parsed["type"] == "playlist_finished":
+            self._playlist_is_active = False
+            self.log_message.emit(line)
+
+        elif parsed["type"] == "download_progress":
             pct = int(float(str(parsed.get("percent", 0))))
-            self.progress_changed.emit(pct)
-            detail_parts = [f"{pct}%"]
             speed = parsed.get("speed")
             eta = parsed.get("eta")
+
+            if self._playlist_is_active and self._playlist_total > 1:
+                overall = _playlist_overall(
+                    self._playlist_current, self._playlist_total, pct
+                )
+                self.progress_changed.emit(overall)
+                parts = [
+                    f"Video {self._playlist_current}/{self._playlist_total}",
+                    f"{pct}%",
+                ]
+            else:
+                self.progress_changed.emit(pct)
+                parts = [f"{pct}%"]
+
             if speed is not None:
-                detail_parts.append(f"{speed}")
+                parts.append(f"{speed}")
             if eta is not None:
-                detail_parts.append(f"ETA {eta}")
-            self.status_changed.emit(" | ".join(detail_parts))
+                parts.append(f"ETA {eta}")
+            self.status_changed.emit(" | ".join(parts))
 
         elif parsed["type"] == "download_completed":
-            self.progress_changed.emit(100)
+            if self._playlist_is_active:
+                overall = _playlist_overall(
+                    self._playlist_current, self._playlist_total, 100
+                )
+                self.progress_changed.emit(overall)
+            else:
+                self.progress_changed.emit(100)
             self.status_changed.emit(self._i18n.get_text("status.completed"))
 
         elif parsed["type"] == "postprocess":
             self.log_message.emit(line)
 
         else:
-            # destination, log, etc. — show in log area
             if line.strip():
                 self.log_message.emit(line)
+                lower = line.lower()
+                if any(kw in lower for kw in (
+                    "error", "unable", "fail", "403", "404", "429",
+                    "unavailable", "not found", "forbidden",
+                )):
+                    self._error_lines.append(line.strip())
 
     def _clear_sensitive_state(self) -> None:
         """Remove any lingering cookie path references from memory."""
-        self._request.cookie_file = Path(".")
+        if self._request.cookie_file is not None:
+            self._request.cookie_file = Path(".")
+
+
+def _playlist_overall(current: int, total: int, video_pct: float) -> int:
+    """Combine per-video and playlist progress into a single percentage."""
+    if total <= 1:
+        return int(video_pct)
+    base = (current - 1) / total * 100.0
+    increment = video_pct / total
+    return int(base + increment)

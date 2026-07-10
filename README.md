@@ -1,8 +1,8 @@
 # Videcook
 
-**TR:** Videcook, yt-dlp + cookies.txt + FFmpeg kullanarak video indirmeyi kolaylaştıran bir Windows masaüstü uygulamasıdır. Kullanıcıların komut satırı (CMD) ile uğraşmasına gerek kalmaz.
+**TR:** Videcook, yt-dlp + cookies.txt + FFmpeg kullanarak video indirmeyi kolaylaştıran; ayrıca kendi Groq API anahtarınızla İngilizce SRT altyazı üretebilen bir Windows masaüstü uygulamasıdır. Kullanıcıların komut satırı (CMD) ile uğraşmasına gerek kalmaz.
 
-**EN:** Videcook is a Windows desktop application that simplifies video downloading using yt-dlp + cookies.txt + FFmpeg. Users never need to touch the command line.
+**EN:** Videcook is a Windows desktop application that simplifies video downloading using yt-dlp + cookies.txt + FFmpeg and can create English SRT subtitles using the user's own Groq API key. Users never need to touch the command line.
 
 ## Languages
 
@@ -21,7 +21,7 @@ Cookie files are **never** read, stored, or logged by Videcook.
 
 ## Status
 
-Engine integration complete. GUI + download worker wired. Packaging implemented.
+Video download, first-run helper tool setup, and English SRT creation are implemented. The portable Windows package contains the Python/Qt/Groq runtime; users supply their own Groq API key for subtitles.
 
 ---
 
@@ -98,15 +98,20 @@ helpful error message instead of crashing.
 Note: `bin/` is git-ignored (except `.gitkeep`). These files are **never**
 committed to the repository.
 
+## English SRT Subtitles
+
+1. Obtain a personal Groq API key and save it from **Settings**.
+2. Open **Subtitles**, choose an audio file, and choose the target `.srt` path.
+3. Click **Create SRT**.
+
+Videcook converts the audio to a compact temporary format, sends sequential
+chunks to Groq Whisper, and creates an English `.srt` file. The API key is
+stored with Windows user encryption and is never included in the portable
+package or GitHub repository.
+
 ---
 
 ## Building a Portable Windows Distribution
-
-### One-time Setup
-
-```bash
-python -m pip install pyinstaller
-```
 
 ### Build
 
@@ -120,28 +125,31 @@ This runs PyInstaller with `Videcook.spec` and produces:
 dist/
   Videcook/
     Videcook.exe
-    bin/          ← yt-dlp.exe, ffmpeg.exe, ffprobe.exe (if available)
+    _internal/    ← Qt, Python, Groq and bundled resources
     locales/      ← tr.json, en.json
     README.md
     THIRD_PARTY_LICENSES.md
 ```
 
-Copy the entire `dist/Videcook/` folder anywhere. No installation required.
-Double-click `Videcook.exe` to run.
+Zip and distribute the entire `dist/Videcook/` folder. No installation is
+required: users extract the ZIP and double-click `Videcook.exe`.
 
 ### What Happens
 
 - The PyInstaller spec (`Videcook.spec`) bundles all `.py` files + required
   Qt/PySide6 DLLs automatically.
 - `locales/`, `README.md`, and `THIRD_PARTY_LICENSES.md` are included as data.
-- Any `bin/*.exe` files present at build time are placed into `bin/` in the
-  output. If `bin/` is empty, the built `.exe` will still run — only downloads
-  will fail with a clear message.
+- Any `bin/*.exe` files present at build time are placed into the package. If
+  they are absent, the app still opens and its first-run setup can download
+  them with the user's confirmation.
+- Preferences, logs and helper tools downloaded after installation are kept in
+  `%LOCALAPPDATA%\\Videcook`, never inside the application folder.
 - The `--clean` flag removes previous build artifacts before each build.
 
 ### Important
 
-- The portable folder is **not** a single `.exe`. Distribute the whole folder.
+- The portable folder is **not** a single `.exe`. Distribute the whole folder
+  inside a ZIP, and tell users to extract it before opening the app.
 - Microsoft Defender may flag unsigned PyInstaller files. Adding a code-signing
   certificate to `Videcook.spec` can resolve this for distribution.
 - If you update binaries, re-run the build script.

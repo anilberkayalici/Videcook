@@ -3,7 +3,7 @@ REM ================================================================
 REM  Videcook — Portable Windows Build Script
 REM
 REM  Builds a portable dist/Videcook/ folder using PyInstaller.
-REM  Requires Python 3.11+ and pyinstaller (pip install pyinstaller).
+REM  Requires Python 3.11+ (the script installs package dependencies).
 REM
 REM  The resulting dist/Videcook/ folder can be copied anywhere
 REM  and run by double-clicking Videcook.exe.
@@ -19,18 +19,15 @@ echo  Videcook Portable Build
 echo ================================================================
 
 REM --- Check prerequisites ---
-python --version >nul 2>&1
+py --version >nul 2>&1
 if %ERRORLEVEL% NEQ 0 (
-    echo [ERROR] Python is not on PATH. Install Python 3.11+ first.
+    echo [ERROR] Python Launcher (py) was not found. Install Python 3.11+ first.
     exit /b 1
 )
 
-python -c "import PyInstaller" >nul 2>&1
-if %ERRORLEVEL% NEQ 0 (
-    echo [INFO] Installing pyinstaller...
-    python -m pip install pyinstaller>=6.0
-    if %ERRORLEVEL% NEQ 0 exit /b 1
-)
+echo [INFO] Installing build dependencies...
+py -m pip install -r requirements.txt
+if %ERRORLEVEL% NEQ 0 exit /b 1
 
 REM --- Warn if bin/ is empty ---
 set "BIN_COUNT=0"
@@ -55,7 +52,7 @@ if exist dist rmdir /s /q dist
 
 REM --- Run PyInstaller ---
 echo [INFO] Building with PyInstaller...
-python -m PyInstaller --clean --noconfirm Videcook.spec
+py -m PyInstaller --clean --noconfirm Videcook.spec
 if %ERRORLEVEL% NEQ 0 (
     echo [ERROR] PyInstaller build failed.
     exit /b 1

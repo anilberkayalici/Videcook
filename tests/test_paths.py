@@ -7,9 +7,11 @@ from videcook.paths import (
     get_asset_path,
     get_assets_dir,
     get_bin_dir,
+    get_bundled_bin_dir,
     get_ffmpeg_path,
     get_ffprobe_path,
     get_project_root,
+    get_user_data_dir,
     get_ytdlp_path,
 )
 
@@ -44,12 +46,17 @@ class TestPaths:
         assert path.name == "ffprobe.exe"
         assert path.parent == get_bin_dir()
 
-    def test_frozen_mode_uses_meipass(self, monkeypatch) -> None:
-        """When frozen, get_project_root() returns sys._MEIPASS."""
+    def test_frozen_mode_separates_bundled_and_user_paths(self, monkeypatch, tmp_path) -> None:
+        """Frozen builds read bundled files but write user files outside _MEIPASS."""
         fake_root = Path("C:/fake/meipass")
         monkeypatch.setattr(sys, "frozen", True, raising=False)
         monkeypatch.setattr(sys, "_MEIPASS", str(fake_root), raising=False)
+        monkeypatch.setenv("LOCALAPPDATA", str(tmp_path / "LocalAppData"))
         assert get_project_root() == fake_root
+        assert get_bundled_bin_dir() == fake_root / "bin"
+        assert get_bin_dir() == tmp_path / "LocalAppData" / "Videcook" / "bin"
+        assert get_user_data_dir() == tmp_path / "LocalAppData" / "Videcook"
+        assert get_bin_dir() != get_bundled_bin_dir()
 
     def test_bin_dir_does_not_require_exe_files(self) -> None:
         """get_bin_dir() returns a Path regardless of file existence."""
