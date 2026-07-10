@@ -1,11 +1,10 @@
-"""Small, dependency-free Groq Whisper transcription client."""
+"""Small Groq Whisper transcription client with i18n-aware error messages."""
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
-
-from groq import APIConnectionError, APIStatusError, Groq, RateLimitError
 
 from videcook.core.subtitles import SubtitleSegment
 
@@ -27,17 +26,33 @@ class GroqTranscriptionClient:
 
     model = "whisper-large-v3"
 
-    def __init__(self, api_key: str, client: Any | None = None) -> None:
+    def __init__(
+        self,
+        api_key: str,
+        get_text: Callable[[str], str] | None = None,
+        client: Any | None = None,
+    ) -> None:
         self.api_key = api_key.strip()
         if not self.api_key:
-            raise ValueError("Groq API key is required.")
-        self._client = client or Groq(api_key=self.api_key)
+            raise ValueError("API key must not be empty.")
+        self._t = get_text or (lambda key: key)
+        self._client = client
+
+    def _ensure_client(self) -> Any:
+        if self._client is not None:
+            return self._client
+        from groq import Groq
+
+        self._client = Groq(api_key=self.api_key)
+        return self._client
 
     def transcribe(self, audio_path: Path, language: str = "en") -> list[SubtitleSegment]:
         """Transcribe an audio chunk through Groq and return timestamped text."""
+        from groq import APIConnectionError, APIStatusError, RateLimitError
+
         try:
             with audio_path.open("rb") as audio_file:
-                response = self._client.audio.transcriptions.create(
+                response = self._ensure_client().audio.transcriptions.create(
                     file=(audio_path.name, audio_file.read()),
                     model=self.model,
                     language=language,
@@ -46,11 +61,15 @@ class GroqTranscriptionClient:
                     temperature=0.0,
                 )
         except RateLimitError as exc:
-            raise RuntimeError("Groq kullanım kotası doldu. Bir süre sonra tekrar deneyin.") from exc
+            raise RuntimeError(self._t("subtitle.error.rate_limited")) from exc
         except APIConnectionError as exc:
-            raise RuntimeError("Groq sunucusuna ulaşılamadı. İnternet bağlantınızı kontrol edin.") from exc
+            raise RuntimeError(self._t("subtitle.error.connection_failed")) from exc
         except APIStatusError as exc:
-            raise RuntimeError(f"Groq altyazı isteği başarısız oldu ({exc.status_code}): {exc.message}") from exc
+            raise RuntimeError(
+                self._t("subtitle.error.api_error").format(
+                    status=exc.status_code, detail=exc.message
+                )
+            ) from exc
 
         payload = response if isinstance(response, dict) else response.model_dump()
         return parse_verbose_transcription(payload)

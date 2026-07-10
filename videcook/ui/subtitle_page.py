@@ -85,13 +85,37 @@ class SubtitlePage(QWidget):
         binaries = check_binaries()
         if not binaries.ffmpeg_exists or not binaries.ffprobe_exists:
             QMessageBox.warning(self, t("app.name"), t("error.ffmpeg_missing")); return
+
+        self._cancel_previous_job()
+
         pipeline = SubtitlePipeline(
             binaries.ffmpeg_path,
             binaries.ffprobe_path,
-            GroqTranscriptionClient(api_key),
+            GroqTranscriptionClient(api_key, get_text=self._i18n.get_text),
+            get_text=self._i18n.get_text,
         )
-        self._thread = QThread(); self._worker = SubtitleWorker(pipeline, self._source, self._destination); self._worker.moveToThread(self._thread)
-        self._thread.started.connect(self._worker.run); self._worker.progress_changed.connect(self._progress.setValue); self._worker.status_changed.connect(self._status.setText); self._worker.finished.connect(self._finish_job); self._worker.finished.connect(self._thread.quit); self._thread.finished.connect(self._thread.deleteLater); self._thread.finished.connect(self._clear_worker); self._start.setEnabled(False); self._cancel.setEnabled(True); self._thread.start()
+        self._thread = QThread()
+        self._worker = SubtitleWorker(pipeline, self._source, self._destination)
+        self._worker.moveToThread(self._thread)
+        self._thread.started.connect(self._worker.run)
+        self._worker.progress_changed.connect(self._progress.setValue)
+        self._worker.status_changed.connect(self._status.setText)
+        self._worker.finished.connect(self._finish_job)
+        self._worker.finished.connect(self._thread.quit)
+        self._thread.finished.connect(self._thread.deleteLater)
+        self._thread.finished.connect(self._clear_worker)
+        self._start.setEnabled(False)
+        self._cancel.setEnabled(True)
+        self._thread.start()
+
+    def _cancel_previous_job(self) -> None:
+        if self._worker:
+            self._worker.cancel()
+        if self._thread and self._thread.isRunning():
+            self._thread.quit()
+            self._thread.wait(5000)
+        self._worker = None
+        self._thread = None
 
     def _cancel_job(self) -> None:
         if self._worker: self._worker.cancel()

@@ -43,10 +43,12 @@ class SubtitlePipeline:
         ffmpeg_path: Path,
         ffprobe_path: Path,
         transcriber,
+        get_text: Callable[[str], str] | None = None,
     ) -> None:
         self._ffmpeg_path = ffmpeg_path
         self._ffprobe_path = ffprobe_path
         self._transcriber = transcriber
+        self._t = get_text or (lambda key: key)
 
     def create_srt(
         self,
@@ -55,8 +57,9 @@ class SubtitlePipeline:
         on_progress: Callable[[int, str], None] | None = None,
         is_cancelled: Callable[[], bool] | None = None,
     ) -> None:
+        t = self._t
         if not source.is_file():
-            raise FileNotFoundError(f"Ses dosyası bulunamadı: {source}")
+            raise FileNotFoundError(t("subtitle.error.file_not_found").format(source=source))
         with tempfile.TemporaryDirectory(prefix="videcook_subtitles_") as temp_dir:
             temp = Path(temp_dir)
             normalized = temp / "normalized.ogg"
@@ -71,7 +74,7 @@ class SubtitlePipeline:
             merged: list[SubtitleSegment] = []
             for index, window in enumerate(windows, start=1):
                 if is_cancelled and is_cancelled():
-                    raise RuntimeError("İşlem kullanıcı tarafından iptal edildi.")
+                    raise RuntimeError(t("subtitle.error.cancelled"))
                 chunk = temp / f"chunk_{index}.ogg"
                 self._run(
                     [
@@ -80,16 +83,22 @@ class SubtitlePipeline:
                     ]
                 )
                 if on_progress:
-                    on_progress(round((index - 1) / len(windows) * 100), f"Parça {index}/{len(windows)} işleniyor")
+                    pct = round((index - 1) / len(windows) * 100)
+                    msg = t("subtitle.progress.chunk").format(current=index, total=len(windows))
+                    on_progress(pct, msg)
+                try:
+                    segments = self._transcriber.transcribe(chunk, language="en")
+                except RuntimeError:
+                    raise
                 shifted = [
                     SubtitleSegment(segment.start + window.start, segment.end + window.start, segment.text)
-                    for segment in self._transcriber.transcribe(chunk, language="en")
+                    for segment in segments
                 ]
                 merged = merge_chunk_segments(merged, shifted)
             destination.parent.mkdir(parents=True, exist_ok=True)
             destination.write_text(render_srt(merged), encoding="utf-8")
             if on_progress:
-                on_progress(100, "Altyazı hazır")
+                on_progress(100, t("subtitle.progress.done"))
 
     def _duration(self, audio_path: Path) -> float:
         result = subprocess.run(
@@ -99,11 +108,10 @@ class SubtitlePipeline:
             check=False,
         )
         if result.returncode != 0:
-            raise RuntimeError("Ses dosyasının süresi okunamadı.")
+            raise RuntimeError(self._t("subtitle.error.duration_failed"))
         return float(result.stdout.strip())
 
-    @staticmethod
-    def _run(args: list[str]) -> None:
+    def _run(self, args: list[str]) -> None:
         result = subprocess.run(args, capture_output=True, text=True, check=False)
         if result.returncode != 0:
-            raise RuntimeError(result.stderr.strip() or "FFmpeg ses dosyasını işleyemedi.")
+            raise RuntimeError(self._t("subtitle.error.ffmpeg_failed"))

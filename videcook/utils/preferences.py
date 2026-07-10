@@ -40,7 +40,7 @@ def load_preferences() -> UserPreferences:
             embed_thumbnail=data.get("embed_thumbnail", True),
             advanced_args=data.get("advanced_args", ""),
         )
-    except Exception:
+    except (OSError, json.JSONDecodeError):
         logging.warning("Could not load preferences, using defaults.")
         return UserPreferences()
 
@@ -57,5 +57,5 @@ def save_preferences(prefs: UserPreferences) -> None:
     }
     try:
         path.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
-    except Exception:
+    except OSError:
         logging.warning("Could not save preferences.")

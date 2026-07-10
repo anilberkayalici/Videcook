@@ -1,5 +1,6 @@
 """Build yt-dlp argument lists — never shell strings, never shell=True."""
 
+import shlex
 from pathlib import Path
 
 from videcook.core.models import (
@@ -153,6 +154,6 @@ def _append_extra_args(args: list[str]) -> None:
     prefs = load_preferences()
     extra = prefs.advanced_args.strip()
     if extra:
-        for token in extra.split():
+        for token in shlex.split(extra):
             if token:
                 args.append(token)

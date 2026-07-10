@@ -684,7 +684,10 @@ class DownloadPage(QWidget):
                 self._worker.finished.disconnect()
             except RuntimeError:
                 pass
-            self._worker = None
+        if self._thread and self._thread.isRunning():
+            self._thread.quit()
+            self._thread.wait(5000)
+        self._worker = None
         self._thread = None
 
     def _append_log(self, message: str) -> None:

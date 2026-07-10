@@ -19,6 +19,8 @@ from videcook.ui.settings_page import SettingsPage
 from videcook.ui.setup_wizard import SetupWizard
 from videcook.ui.subtitle_page import SubtitlePage
 from videcook.utils.i18n import LanguageManager
+from videcook.utils.preferences import load_preferences, save_preferences
+from videcook import __version__
 
 
 class MainWindow(QMainWindow):
@@ -213,6 +215,9 @@ class MainWindow(QMainWindow):
         current = self._i18n.current_language
         new_lang = "en" if current == "tr" else "tr"
         self._i18n.set_language(new_lang)
+        prefs = load_preferences()
+        prefs.language = new_lang
+        save_preferences(prefs)
         self.retranslate()
 
     def retranslate(self) -> None:
@@ -222,7 +227,7 @@ class MainWindow(QMainWindow):
         self._app_tagline.setText(t("app.tagline"))
         self._sidebar_title.setText(t("app.name"))
         self._sidebar_hint.setText(t("app.tagline"))
-        self._sidebar_footer.setText("v0.2.0")
+        self._sidebar_footer.setText(f"v{__version__}")
 
         nav_labels = ["nav.download", "nav.subtitles", "nav.help", "nav.settings"]
         for btn, key in zip(self._nav_buttons, nav_labels):

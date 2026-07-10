@@ -15,6 +15,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from videcook.paths import get_ytdlp_path
+from videcook import __version__
 
 _YTDLP_RELEASES_API = (
     "https://api.github.com/repos/yt-dlp/yt-dlp/releases/latest"
@@ -121,7 +122,7 @@ def get_current_version(ytdlp_path: Path) -> str:
 def _fetch_latest_version() -> str:
     """Fetch the latest yt-dlp release tag from GitHub API."""
     req = urllib.request.Request(_YTDLP_RELEASES_API)
-    req.add_header("User-Agent", "Videcook/0.1")
+    req.add_header("User-Agent", f"Videcook/{__version__}")
     req.add_header("Accept", "application/vnd.github+json")
 
     with urllib.request.urlopen(req, timeout=_REQUEST_TIMEOUT) as resp:

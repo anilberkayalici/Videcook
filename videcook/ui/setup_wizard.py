@@ -287,9 +287,6 @@ class SetupWizard(QWidget):
             self._download_btn.setEnabled(False)
             self._skip_btn.setEnabled(True)
         else:
-            self._download_btn.setEnabled(
-                self._trust_check.isChecked() and self._download_btn.isVisible() is not False  # noqa
-            )
             self._download_btn.setEnabled(self._trust_check.isChecked())
             self._skip_btn.setEnabled(True)
 
@@ -408,20 +405,3 @@ class SetupWizard(QWidget):
     def set_i18n(self, i18n: LanguageManager) -> None:
         self._i18n = i18n
         self.retranslate()
-
-    # ------------------------------------------------------------------
-    # Update check (called after binaries are ready)
-    # ------------------------------------------------------------------
-
-    def check_ytdlp_update(self) -> UpdateStatus | None:
-        s = check_binaries()
-        if not s.ytdlp_exists or s.ytdlp_path is None:
-            return None
-        self._update_status = check_for_updates(s.ytdlp_path)
-        return self._update_status
-
-    def update_ytdlp(self) -> tuple[bool, str]:
-        s = check_binaries()
-        if not s.ytdlp_exists or s.ytdlp_path is None:
-            return False, "yt-dlp not found."
-        return perform_update(s.ytdlp_path)

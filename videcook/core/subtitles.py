@@ -42,15 +42,17 @@ def merge_chunk_segments(
 def render_srt(segments: list[SubtitleSegment]) -> str:
     """Render ordered segments as a standard UTF-8 SRT document."""
     lines: list[str] = []
-    for index, segment in enumerate(sorted(segments, key=lambda item: item.start), start=1):
+    counter = 1
+    for segment in sorted(segments, key=lambda item: item.start):
         if not segment.text.strip() or segment.end <= segment.start:
             continue
         lines.extend(
             [
-                str(index),
+                str(counter),
                 f"{format_srt_timestamp(segment.start)} --> {format_srt_timestamp(segment.end)}",
                 segment.text.strip(),
                 "",
             ]
         )
+        counter += 1
     return "\n".join(lines)

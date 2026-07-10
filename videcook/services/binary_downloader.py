@@ -19,6 +19,8 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
+from videcook import __version__
+
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
@@ -87,7 +89,7 @@ def _download_file(
         return task.dest
 
     req = urllib.request.Request(task.url, method="GET")
-    req.add_header("User-Agent", "Videcook/0.1")
+    req.add_header("User-Agent", f"Videcook/{__version__}")
     total = -1
 
     with urllib.request.urlopen(req) as resp:
@@ -209,12 +211,7 @@ def get_total_size_mb() -> float:
 # Qt worker (UI-thread-safe)
 # ---------------------------------------------------------------------------
 
-try:
-    from PySide6.QtCore import QObject, Signal, Slot
-
-    _HAS_QT = True
-except ImportError:
-    _HAS_QT = False
+from PySide6.QtCore import QObject, Signal, Slot
 
 
 class BinaryDownloadWorker(QObject):

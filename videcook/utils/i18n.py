@@ -38,6 +38,17 @@ class LanguageManager:
             with open(filepath, encoding="utf-8") as f:
                 self._translations[lang] = json.load(f)
 
+        self._load_saved_language()
+
+    def _load_saved_language(self) -> None:
+        try:
+            from videcook.utils.preferences import load_preferences
+            prefs = load_preferences()
+            if prefs.language in SUPPORTED_LANGUAGES:
+                self._current_language = prefs.language
+        except Exception:
+            pass
+
     @property
     def current_language(self) -> str:
         """Return the currently active language code."""

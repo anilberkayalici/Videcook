@@ -13,7 +13,7 @@ class _DataBlob(ctypes.Structure):
 
 
 def _path(create: bool = False) -> Path:
-    root = Path(os.environ.get("APPDATA", Path.home())) / "Videcook"
+    root = Path(os.environ.get("LOCALAPPDATA", os.environ.get("APPDATA", Path.home()))) / "Videcook"
     if create:
         root.mkdir(parents=True, exist_ok=True)
     return root / "groq_api_key.bin"
@@ -44,6 +44,8 @@ def save_groq_api_key(api_key: str) -> None:
 
 def load_groq_api_key() -> str:
     """Return the current user's decrypted key, or an empty string when unset."""
+    if os.name != "nt":
+        return ""
     path = _path()
     if not path.is_file():
         return ""

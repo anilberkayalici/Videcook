@@ -64,7 +64,15 @@ def wait_process(
     cancelled: bool = False,
 ) -> DownloadProcessResult:
     """Wait for *process* to exit and build a :class:`DownloadProcessResult`."""
-    rc = process.wait(timeout=30)
+    try:
+        rc = process.wait(timeout=30)
+    except subprocess.TimeoutExpired:
+        process.kill()
+        process.wait()
+        return DownloadProcessResult(
+            success=False, return_code=-1, cancelled=False,
+            message="Download timed out after 30 seconds.",
+        )
     if cancelled:
         return DownloadProcessResult(
             success=False, return_code=rc, cancelled=True, message="Cancelled by user."

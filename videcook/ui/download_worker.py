@@ -50,6 +50,12 @@ class DownloadWorker(QObject):
         t = self._i18n.get_text
         self._error_lines.clear()
 
+        try:
+            self._do_run(t)
+        finally:
+            self._clear_sensitive_state()
+
+    def _do_run(self, t) -> None:
         self.log_message.emit(t("log.checking_binaries"))
         status = check_binaries()
         self.log_message.emit(status.to_display())
@@ -104,8 +110,6 @@ class DownloadWorker(QObject):
             self.log_message.emit(result.message)
             friendly = self._build_friendly_error(t)
             self.finished.emit(False, friendly)
-
-        self._clear_sensitive_state()
 
     def cancel(self) -> None:
         """Request cancellation. The running subprocess is terminated."""

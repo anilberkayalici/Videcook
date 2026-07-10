@@ -113,7 +113,6 @@ QScrollBar::sub-line:vertical {
 /* ================================================================
    Surfaces
    ================================================================ */
-#card,
 #primaryCard,
 #statusCard,
 #settingsCard,
@@ -532,26 +531,6 @@ QPlainTextEdit:focus {
     color: #E7C2A3;
     font-size: 12px;
     font-weight: 500;
-}
-
-#okBadge {
-    background-color: #102018;
-    color: #A5E8BD;
-    border: 1px solid #275E3C;
-    border-radius: 7px;
-    padding: 4px 12px;
-    font-weight: 700;
-    font-size: 12px;
-}
-
-#missingBadge {
-    background-color: #251019;
-    color: #F3A0B1;
-    border: 1px solid #7F1D2D;
-    border-radius: 7px;
-    padding: 4px 12px;
-    font-weight: 700;
-    font-size: 12px;
 }
 """
 
