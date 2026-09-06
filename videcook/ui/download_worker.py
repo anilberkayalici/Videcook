@@ -171,10 +171,28 @@ class DownloadWorker(QObject):
                 self.progress_changed.emit(pct)
                 parts = [f"{pct}%"]
 
+            total = parsed.get("total")
             if speed is not None:
+                speed = speed.replace("MiB", "Mb").replace("KiB", "Kb").replace("GiB", "Gb")
                 parts.append(f"{speed}")
             if eta is not None:
-                parts.append(f"ETA {eta}")
+                parts.append(f"Kalan {eta}")
+            if total is not None:
+                import re
+                m = re.match(r"([\d\.]+)([a-zA-Z]+)", total)
+                if m:
+                    try:
+                        val = int(float(m.group(1)))
+                        unit = m.group(2).upper()
+                        if "K" in unit: u = "Kb"
+                        elif "M" in unit: u = "Mb"
+                        elif "G" in unit: u = "Gb"
+                        else: u = "b"
+                        parts.append(f"Boyut: {val} {u}")
+                    except:
+                        parts.append(f"Boyut: {total}")
+                else:
+                    parts.append(f"Boyut: {total}")
             self.status_changed.emit(" | ".join(parts))
 
         elif parsed["type"] == "download_completed":

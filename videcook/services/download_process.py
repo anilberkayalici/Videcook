@@ -31,13 +31,25 @@ def create_process(args: list[str]) -> subprocess.Popen:
     - stdout is piped; stderr is merged into stdout.
     - Text mode with UTF-8 encoding.
     """
+    import os
+    env = os.environ.copy()
+    env["PYTHONIOENCODING"] = "utf-8"
+    env["PYTHONUTF8"] = "1"
+
+    kwargs = {
+        "stdout": subprocess.PIPE,
+        "stderr": subprocess.STDOUT,
+        "text": True,
+        "encoding": "utf-8",
+        "errors": "replace",
+        "env": env,
+    }
+    if os.name == "nt":
+        kwargs["creationflags"] = 0x08000000  # CREATE_NO_WINDOW
+
     return subprocess.Popen(  # noqa: S603  — args list, not shell string
         args,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
+        **kwargs,
     )
 
 

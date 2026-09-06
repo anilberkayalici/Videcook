@@ -77,13 +77,13 @@ def _resolve_binary(executable_name: str, local_paths: list[Path], field_prefix:
     """Check PATH then local ``bin/`` for *executable_name*.
     Returns a dict with ``{field_prefix}_path`` and ``{field_prefix}_source`` keys.
     """
-    on_path = find_on_path(executable_name)
-    if on_path is not None and on_path.is_file():
-        return {f"{field_prefix}_path": on_path, f"{field_prefix}_source": "PATH"}
-
     for index, local_path in enumerate(local_paths):
         if local_path.is_file():
             source = "managed" if index == 0 else "bundled"
             return {f"{field_prefix}_path": local_path, f"{field_prefix}_source": source}
+
+    on_path = find_on_path(executable_name)
+    if on_path is not None and on_path.is_file():
+        return {f"{field_prefix}_path": on_path, f"{field_prefix}_source": "PATH"}
 
     return {f"{field_prefix}_path": local_paths[0], f"{field_prefix}_source": "missing"}

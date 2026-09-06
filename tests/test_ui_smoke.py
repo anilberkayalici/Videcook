@@ -97,6 +97,19 @@ class TestDownloadPage:
         assert page._log is not None
         assert page._log.objectName() == "operation_log"
 
+        assert hasattr(page, "_music_analysis_btn")
+        assert page._music_analysis_btn.objectName() == "musicAnalysisBtn"
+        assert page._music_analysis_btn.isHidden() is True
+
+        assert hasattr(page, "_pitch_tempo_btn")
+        assert page._pitch_tempo_btn.objectName() == "pitchTempoBtn"
+        assert page._pitch_tempo_btn.isHidden() is True
+
+        # Switching to Audio mode makes both visible
+        page._audio_btn.click()
+        assert page._music_analysis_btn.isHidden() is False
+        assert page._pitch_tempo_btn.isHidden() is False
+
     def test_labels_localized_turkish(self, qtbot, lm: LanguageManager) -> None:
         """Labels should be in Turkish by default."""
         from videcook.ui.main_window import MainWindow
@@ -108,3 +121,53 @@ class TestDownloadPage:
         assert "Gözat" in page._cookie_browse.text()
         assert "İndir" in page._download_btn.text()
         assert "İşlem Günlüğü" in page._log_title.text()
+
+
+class TestTranslateHubPage:
+    def test_hub_switch_buttons(self, qtbot, lm: LanguageManager) -> None:
+        """Hub page should default to Subtitles and allow switching to Translate."""
+        from videcook.ui.main_window import MainWindow
+
+        window = MainWindow(lm)
+        qtbot.addWidget(window)
+        window._show_page(MainWindow.PAGE_TRANSLATE_HUB)
+
+        hub = window._translate_hub_page
+        assert hub._sub_switch_btn.isChecked() is True
+        assert hub._trans_switch_btn.isChecked() is False
+        assert hub._hub_stack.currentIndex() == 0
+
+        # Switch to Translate
+        hub._trans_switch_btn.click()
+        assert hub._sub_switch_btn.isChecked() is False
+        assert hub._trans_switch_btn.isChecked() is True
+        assert hub._hub_stack.currentIndex() == 1
+
+        # Switch back to Subtitles
+        hub._sub_switch_btn.click()
+        assert hub._sub_switch_btn.isChecked() is True
+        assert hub._trans_switch_btn.isChecked() is False
+        assert hub._hub_stack.currentIndex() == 0
+
+
+class TestEditPage:
+    def test_edit_page_controls(self, qtbot, lm: LanguageManager) -> None:
+        """EditPage controls and preset buttons should function correctly."""
+        from videcook.ui.main_window import MainWindow
+
+        window = MainWindow(lm)
+        qtbot.addWidget(window)
+        window._show_page(MainWindow.PAGE_EDIT)
+
+        edit_page = window._edit_page
+        assert edit_page._video_input is not None
+        assert edit_page._prompt_input is not None
+        assert edit_page._aspect_combo.count() == 4
+        assert edit_page._sub_combo.count() == 4
+        assert edit_page._dur_combo.count() == 3
+
+        # Preset test
+        edit_page._set_prompt_preset("Test prompt")
+        assert edit_page._prompt_input.toPlainText() == "Test prompt"
+
+

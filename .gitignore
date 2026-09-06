@@ -31,3 +31,22 @@ bin/*.7z
 .DS_Store
 Thumbs.db
 docs/superpowers/ 
+
+# Temporary media & test artifacts
+*.part
+*.old
+*.zip
+*.7z
+*.webm
+*.m4a
+*.mp4
+*.pdf
+output.txt
+test*.mp4
+test*.m4a
+test*.webm
+test*.pdf
+scratch/
+
+# Separate external subprojects
+Çeviri-Uygulaması/

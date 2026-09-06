@@ -1,7 +1,10 @@
 """Settings page — helper binary status, update check, and advanced yt-dlp args."""
 
+import webbrowser
+
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
+    QCheckBox,
     QFrame,
     QHBoxLayout,
     QLabel,
@@ -16,6 +19,13 @@ from PySide6.QtWidgets import (
 from videcook.services.binary_locator import check_binaries
 from videcook.services.update_checker import check_for_updates, get_current_version
 from videcook.services.secure_store import load_groq_api_key, remove_groq_api_key, save_groq_api_key
+from videcook.ui.theme import (
+    THEMES,
+    THEME_KEYS,
+    apply_theme,
+    build_theme_swatch_stylesheet,
+    normalize_theme_key,
+)
 from videcook.utils.i18n import LanguageManager
 from videcook.utils.preferences import load_preferences, save_preferences
 
@@ -89,6 +99,8 @@ class SettingsPage(QWidget):
             source_label = QLabel()
             source_label.setObjectName("appTagline")
             source_label.setAlignment(Qt.AlignmentFlag.AlignVCenter)
+            source_label.setWordWrap(True)
+            source_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
 
             row_layout.addWidget(name_label)
             row_layout.addWidget(status_label)
@@ -110,12 +122,33 @@ class SettingsPage(QWidget):
         self._update_btn.clicked.connect(self._on_check_update)
         card_layout.addWidget(self._update_btn)
 
-        # Separator line
-        line1 = QFrame()
-        line1.setFrameShape(QFrame.Shape.HLine)
-        line1.setStyleSheet("color: #2A1A21;")
-        line1.setFixedHeight(1)
-        card_layout.addWidget(line1)
+        card_layout.addWidget(self._make_separator())
+
+        # Theme selector
+        self._theme_label = QLabel()
+        self._theme_label.setObjectName("sectionLabel")
+        card_layout.addWidget(self._theme_label)
+
+        self._theme_row = QHBoxLayout()
+        self._theme_row.setSpacing(10)
+        self._theme_swatches: list[QPushButton] = []
+        for theme_key in THEME_KEYS:
+            p = THEMES[theme_key]
+            btn = QPushButton()
+            btn.setObjectName("themeSwatch")
+            btn.setCheckable(True)
+            btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            btn.setToolTip(p["name"])
+            btn.setStyleSheet(build_theme_swatch_stylesheet(p))
+            btn.clicked.connect(
+                lambda _checked=False, k=theme_key: self._on_theme_changed(k)
+            )
+            self._theme_row.addWidget(btn)
+            self._theme_swatches.append(btn)
+        self._theme_row.addStretch(1)
+        card_layout.addLayout(self._theme_row)
+
+        card_layout.addWidget(self._make_separator())
 
         # Advanced yt-dlp args
         self._advanced_label = QLabel()
@@ -136,7 +169,7 @@ class SettingsPage(QWidget):
 
         line_key = QFrame()
         line_key.setFrameShape(QFrame.Shape.HLine)
-        line_key.setStyleSheet("color: #2A1A21;")
+        line_key.setObjectName("settingsSeparator")
         card_layout.addWidget(line_key)
         self._groq_label = QLabel()
         self._groq_label.setObjectName("sectionLabel")
@@ -167,12 +200,20 @@ class SettingsPage(QWidget):
         self._groq_status.setObjectName("appTagline")
         card_layout.addWidget(self._groq_status)
 
-        # Separator line
-        line2 = QFrame()
-        line2.setFrameShape(QFrame.Shape.HLine)
-        line2.setStyleSheet("color: #2A1A21;")
-        line2.setFixedHeight(1)
-        card_layout.addWidget(line2)
+        card_layout.addWidget(self._make_separator())
+
+        self._releases_btn = QPushButton()
+        self._releases_btn.setObjectName("download_button")
+        self._releases_btn.setMinimumHeight(42)
+        self._releases_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._releases_btn.clicked.connect(
+            lambda: webbrowser.open(
+                "https://github.com/anilberkayalici/Videcook/releases"
+            )
+        )
+        card_layout.addWidget(self._releases_btn)
+
+        card_layout.addWidget(self._make_separator())
 
         self._note = QLabel()
         self._note.setObjectName("warningLabel")
@@ -181,6 +222,13 @@ class SettingsPage(QWidget):
 
         layout.addWidget(card)
         layout.addStretch(1)
+
+    def _make_separator(self) -> QFrame:
+        line = QFrame()
+        line.setObjectName("settingsSeparator")
+        line.setFrameShape(QFrame.Shape.HLine)
+        line.setFixedHeight(1)
+        return line
 
     def retranslate(self) -> None:
         t = self._i18n.get_text
@@ -194,6 +242,7 @@ class SettingsPage(QWidget):
         self._save_groq_btn.setText(t("settings.groq_save"))
         self._remove_groq_btn.setText(t("settings.groq_remove"))
         self._groq_status.setText(t("settings.groq_saved") if load_groq_api_key() else t("settings.groq_not_saved"))
+        self._releases_btn.setText(t("settings.previous_releases"))
         self._note.setText(t("settings.note"))
 
         prefs = load_preferences()
@@ -201,19 +250,31 @@ class SettingsPage(QWidget):
         self._advanced_input.setText(prefs.advanced_args)
         self._advanced_input.blockSignals(False)
 
+        self._theme_label.setText(t("settings.theme"))
+
+        active_theme = normalize_theme_key(prefs.theme)
+        for i, key in enumerate(THEME_KEYS):
+            self._theme_swatches[i].setChecked(key == active_theme)
+
         status = check_binaries()
         labels = [
-            (t("settings.ytdlp"), status.ytdlp_exists, status.ytdlp_source),
-            (t("settings.ffmpeg"), status.ffmpeg_exists, status.ffmpeg_source),
-            (t("settings.ffprobe"), status.ffprobe_exists, status.ffprobe_source),
+            (t("settings.ytdlp"), status.ytdlp_exists, status.ytdlp_path),
+            (t("settings.ffmpeg"), status.ffmpeg_exists, status.ffmpeg_path),
+            (t("settings.ffprobe"), status.ffprobe_exists, status.ffprobe_path),
         ]
 
-        for (name_label, status_label, source_label), (label_text, exists, source) in zip(
+        for (name_label, status_label, source_label), (label_text, exists, path) in zip(
             self._rows, labels
         ):
             name_label.setText(label_text)
             self._update_status_badge(status_label, exists)
-            source_label.setText(f"[{self._source_name(source, t)}]")
+            if exists and path is not None:
+                path_str = str(path)
+                source_label.setText(path_str)
+                source_label.setToolTip(path_str)
+            else:
+                source_label.setText(t("settings.source_missing"))
+                source_label.setToolTip("")
 
         if status.ytdlp_exists and status.ytdlp_path is not None:
             ver = get_current_version(status.ytdlp_path)
@@ -296,6 +357,21 @@ class SettingsPage(QWidget):
     def _on_advanced_changed(self, text: str) -> None:
         prefs = load_preferences()
         prefs.advanced_args = text.strip()
+        save_preferences(prefs)
+
+    def _on_theme_changed(self, theme_key: str) -> None:
+        from PySide6.QtWidgets import QApplication
+
+        theme_key = normalize_theme_key(theme_key)
+        app = QApplication.instance()
+        if app is not None:
+            apply_theme(app, theme_key)
+        # Update checked state on swatches
+        for i, key in enumerate(THEME_KEYS):
+            self._theme_swatches[i].setChecked(key == theme_key)
+        # Persist
+        prefs = load_preferences()
+        prefs.theme = theme_key
         save_preferences(prefs)
 
     def _save_groq_key(self) -> None:

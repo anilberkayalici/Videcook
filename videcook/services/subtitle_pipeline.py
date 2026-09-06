@@ -87,7 +87,7 @@ class SubtitlePipeline:
                     msg = t("subtitle.progress.chunk").format(current=index, total=len(windows))
                     on_progress(pct, msg)
                 try:
-                    segments = self._transcriber.transcribe(chunk, language="en")
+                    segments = self._transcriber.transcribe(chunk, language=None)
                 except RuntimeError:
                     raise
                 shifted = [

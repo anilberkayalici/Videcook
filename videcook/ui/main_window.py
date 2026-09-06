@@ -13,11 +13,18 @@ from PySide6.QtWidgets import (
 )
 
 from videcook.services.binary_locator import check_binaries
+from videcook.ui.converter_page import ConverterPage
+from videcook.ui.edit_page import EditPage
+from videcook.ui.history_page import HistoryPage
+from videcook.ui.upscayl_page import UpscaylPage
 from videcook.ui.download_page import DownloadPage
 from videcook.ui.help_page import HelpPage
 from videcook.ui.settings_page import SettingsPage
 from videcook.ui.setup_wizard import SetupWizard
 from videcook.ui.subtitle_page import SubtitlePage
+from videcook.ui.subtitle_translate_hub import SubtitlesTranslateHubPage
+from videcook.ui.theme import apply_theme
+from videcook.ui.translate_page import TranslatePage
 from videcook.utils.i18n import LanguageManager
 from videcook.utils.preferences import load_preferences, save_preferences
 from videcook import __version__
@@ -31,9 +38,15 @@ class MainWindow(QMainWindow):
     # Index constants for the stacked widget
     PAGE_SETUP = 0
     PAGE_DOWNLOAD = 1
-    PAGE_SUBTITLES = 2
-    PAGE_HELP = 3
-    PAGE_SETTINGS = 4
+    PAGE_TRANSLATE_HUB = 2
+    PAGE_SUBTITLES = 2  # Compatibility alias
+    PAGE_TRANSLATE = 2  # Compatibility alias
+    PAGE_CONVERTER = 3
+    PAGE_EDIT = 4
+    PAGE_UPSCAYL = 5
+    PAGE_HISTORY = 6
+    PAGE_SETTINGS = 7
+    PAGE_HELP = 8
 
     binaries_ready = Signal()
 
@@ -73,23 +86,14 @@ class MainWindow(QMainWindow):
         sb_layout.setSpacing(10)
         sb_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
-        brand = QWidget()
-        brand.setObjectName("sidebarBrand")
-        brand_layout = QVBoxLayout(brand)
-        brand_layout.setContentsMargins(16, 14, 16, 14)
-        brand_layout.setSpacing(4)
-
+        # Hidden brand labels — kept so retranslate() doesn't break
         self._sidebar_title = QLabel()
-        self._sidebar_title.setObjectName("sidebarTitle")
+        self._sidebar_title.setVisible(False)
         self._sidebar_hint = QLabel()
-        self._sidebar_hint.setObjectName("sidebarHint")
-        self._sidebar_hint.setWordWrap(True)
-        brand_layout.addWidget(self._sidebar_title)
-        brand_layout.addWidget(self._sidebar_hint)
-        sb_layout.addWidget(brand)
+        self._sidebar_hint.setVisible(False)
 
         self._nav_buttons: list[QPushButton] = []
-        for idx in range(4):
+        for idx in range(8):
             btn = QPushButton()
             btn.setObjectName("sidebarButton")
             btn.setCheckable(True)
@@ -97,20 +101,41 @@ class MainWindow(QMainWindow):
             if idx == 0:
                 btn.clicked.connect(self._on_download_nav)
             elif idx == 1:
-                btn.clicked.connect(lambda _checked=False: self._show_page(self.PAGE_SUBTITLES))
+                btn.clicked.connect(lambda _checked=False: self._show_page(self.PAGE_TRANSLATE_HUB))
             elif idx == 2:
-                btn.clicked.connect(lambda _checked=False: self._show_page(self.PAGE_HELP))
-            else:
+                btn.clicked.connect(lambda _checked=False: self._show_page(self.PAGE_CONVERTER))
+            elif idx == 3:
+                btn.clicked.connect(lambda _checked=False: self._show_page(self.PAGE_EDIT))
+            elif idx == 4:
+                btn.clicked.connect(lambda _checked=False: self._show_page(self.PAGE_UPSCAYL))
+            elif idx == 5:
+                btn.clicked.connect(lambda _checked=False: self._show_page(self.PAGE_HISTORY))
+            elif idx == 6:
                 btn.clicked.connect(lambda _checked=False: self._show_page(self.PAGE_SETTINGS))
+            else:
+                btn.clicked.connect(lambda _checked=False: self._show_page(self.PAGE_HELP))
             sb_layout.addWidget(btn)
             self._nav_buttons.append(btn)
 
         sb_layout.addStretch(1)
 
+        footer_row = QHBoxLayout()
+        footer_row.setContentsMargins(0, 0, 0, 0)
+        footer_row.setSpacing(8)
+
         self._sidebar_footer = QLabel()
         self._sidebar_footer.setObjectName("sidebarFooter")
         self._sidebar_footer.setWordWrap(True)
-        sb_layout.addWidget(self._sidebar_footer)
+        footer_row.addWidget(self._sidebar_footer, stretch=1)
+
+        self._lang_toggle = QPushButton()
+        self._lang_toggle.setObjectName("langToggle")
+        self._lang_toggle.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._lang_toggle.setFixedSize(58, 30)
+        self._lang_toggle.clicked.connect(self._toggle_language)
+        footer_row.addWidget(self._lang_toggle)
+
+        sb_layout.addLayout(footer_row)
 
         outer.addWidget(sidebar)
 
@@ -121,33 +146,11 @@ class MainWindow(QMainWindow):
         right_layout.setContentsMargins(0, 0, 0, 0)
         right_layout.setSpacing(0)
 
-        # Header
-        header = QWidget()
-        header.setObjectName("header")
-        header.setFixedHeight(78)
-        hl = QHBoxLayout(header)
-        hl.setContentsMargins(34, 0, 34, 0)
-        hl.setSpacing(16)
-
-        title_col = QVBoxLayout()
-        title_col.setSpacing(2)
+        # Hidden labels — kept so retranslate() doesn't break
         self._app_title = QLabel()
-        self._app_title.setObjectName("appTitle")
+        self._app_title.setVisible(False)
         self._app_tagline = QLabel()
-        self._app_tagline.setObjectName("appTagline")
-        title_col.addWidget(self._app_title)
-        title_col.addWidget(self._app_tagline)
-        hl.addLayout(title_col)
-        hl.addStretch(1)
-
-        self._lang_toggle = QPushButton()
-        self._lang_toggle.setObjectName("langToggle")
-        self._lang_toggle.setCursor(Qt.CursorShape.PointingHandCursor)
-        self._lang_toggle.setFixedSize(66, 40)
-        self._lang_toggle.clicked.connect(self._toggle_language)
-        hl.addWidget(self._lang_toggle)
-
-        right_layout.addWidget(header)
+        self._app_tagline.setVisible(False)
 
         # Determine if setup is needed
         status = check_binaries()
@@ -161,15 +164,25 @@ class MainWindow(QMainWindow):
         self.binaries_ready.connect(self._on_binaries_ready)
 
         self._download_page = DownloadPage(self._i18n)
-        self._subtitle_page = SubtitlePage(self._i18n)
-        self._help_page = HelpPage(self._i18n)
+        self._translate_hub_page = SubtitlesTranslateHubPage(self._i18n)
+        self._subtitle_page = self._translate_hub_page._subtitle_page
+        self._translate_page = self._translate_hub_page._translate_page
+        self._converter_page = ConverterPage(self._i18n)
+        self._edit_page = EditPage(self._i18n)
+        self._upscayl_page = UpscaylPage(self._i18n)
+        self._history_page = HistoryPage(self._i18n)
         self._settings_page = SettingsPage(self._i18n)
+        self._help_page = HelpPage(self._i18n)
 
-        self._stack.addWidget(self._setup_wizard)    # index 0
-        self._stack.addWidget(self._download_page)   # index 1
-        self._stack.addWidget(self._subtitle_page)   # index 2
-        self._stack.addWidget(self._help_page)       # index 3
-        self._stack.addWidget(self._settings_page)   # index 4
+        self._stack.addWidget(self._setup_wizard)         # index 0 (PAGE_SETUP)
+        self._stack.addWidget(self._download_page)        # index 1 (PAGE_DOWNLOAD)
+        self._stack.addWidget(self._translate_hub_page)   # index 2 (PAGE_TRANSLATE_HUB)
+        self._stack.addWidget(self._converter_page)       # index 3 (PAGE_CONVERTER)
+        self._stack.addWidget(self._edit_page)            # index 4 (PAGE_EDIT)
+        self._stack.addWidget(self._upscayl_page)         # index 5 (PAGE_UPSCAYL)
+        self._stack.addWidget(self._history_page)         # index 6 (PAGE_HISTORY)
+        self._stack.addWidget(self._settings_page)        # index 7 (PAGE_SETTINGS)
+        self._stack.addWidget(self._help_page)            # index 8 (PAGE_HELP)
 
         right_layout.addWidget(self._stack, stretch=1)
         outer.addWidget(right, stretch=1)
@@ -229,7 +242,16 @@ class MainWindow(QMainWindow):
         self._sidebar_hint.setText(t("app.tagline"))
         self._sidebar_footer.setText(f"v{__version__}")
 
-        nav_labels = ["nav.download", "nav.subtitles", "nav.help", "nav.settings"]
+        nav_labels = [
+            "nav.download",
+            "nav.translate",
+            "nav.converter",
+            "nav.edit",
+            "nav.upscale",
+            "nav.history",
+            "nav.settings",
+            "nav.help",
+        ]
         for btn, key in zip(self._nav_buttons, nav_labels):
             btn.setText(t(key))
 
@@ -238,6 +260,10 @@ class MainWindow(QMainWindow):
 
         self._setup_wizard.set_i18n(self._i18n)
         self._download_page.set_i18n(self._i18n)
-        self._subtitle_page.set_i18n(self._i18n)
+        self._translate_hub_page.set_i18n(self._i18n)
         self._help_page.set_i18n(self._i18n)
+        self._converter_page.set_i18n(self._i18n)
+        self._edit_page.retranslate()
+        self._upscayl_page.set_i18n(self._i18n)
+        self._history_page.set_i18n(self._i18n)
         self._settings_page.set_i18n(self._i18n)

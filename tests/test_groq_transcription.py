@@ -40,4 +40,4 @@ def test_client_uses_official_sdk_with_verbose_segment_timestamps() -> None:
     assert segments[0].text == "Hello."
     assert fake.audio.transcriptions.kwargs["model"] == "whisper-large-v3"
     assert fake.audio.transcriptions.kwargs["response_format"] == "verbose_json"
-    assert fake.audio.transcriptions.kwargs["timestamp_granularities"] == ["segment"]
+    assert fake.audio.transcriptions.kwargs["timestamp_granularities"] == ["segment", "word"]

@@ -18,14 +18,18 @@ def get_project_root() -> Path:
 
 
 def get_user_data_dir() -> Path:
-    """Return Videcook's writable per-user Windows data directory.
+    """Return Videcook's writable per-user data directory.
 
-    PyInstaller's ``_MEIPASS`` directory belongs to the application bundle and
-    may be read-only. Preferences, logs, and downloaded tools therefore live
-    under ``%LOCALAPPDATA%\\Videcook`` instead.
+    Windows: ``%LOCALAPPDATA%\\Videcook``
+    Linux: ``$XDG_DATA_HOME/Videcook`` or ``~/.local/share/Videcook``
     """
-    base = os.environ.get("LOCALAPPDATA") or os.environ.get("APPDATA")
-    directory = Path(base) / "Videcook" if base else Path.home() / ".videcook"
+    if os.name == "nt":
+        base = os.environ.get("LOCALAPPDATA") or os.environ.get("APPDATA", Path.home())
+        directory = Path(base) / "Videcook"
+    else:
+        xdg = os.environ.get("XDG_DATA_HOME")
+        base = Path(xdg) if xdg else Path.home() / ".local" / "share"
+        directory = base / "Videcook"
     directory.mkdir(parents=True, exist_ok=True)
     return directory
 

@@ -84,8 +84,11 @@ def parse_progress_line(line: str) -> dict[str, Any]:
             "percent": float(match.group("percent")),
             "raw": line,
         }
+        total = match.group("total")
         speed = match.group("speed")
         eta = match.group("eta")
+        if total is not None:
+            result["total"] = total
         if speed is not None:
             result["speed"] = speed
         if eta is not None:

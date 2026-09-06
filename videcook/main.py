@@ -30,6 +30,21 @@ def _smoke_check() -> int:
 
 
 def main() -> int:
+    import os
+    import subprocess
+    
+    # Patch subprocess to suppress CMD windows globally on Windows
+    if os.name == "nt":
+        orig_popen = subprocess.Popen
+        
+        class PatchedPopen(orig_popen):
+            def __init__(self, *args, **kwargs):
+                if "creationflags" not in kwargs:
+                    kwargs["creationflags"] = 0x08000000  # CREATE_NO_WINDOW
+                super().__init__(*args, **kwargs)
+                
+        subprocess.Popen = PatchedPopen
+
     if len(sys.argv) > 1 and sys.argv[1] == "--smoke":
         return _smoke_check()
 

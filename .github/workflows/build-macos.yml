@@ -1,0 +1,116 @@
+name: Build macOS DMG
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "GitHub release tag to upload the DMG to"
+        required: false
+        default: "v0.2.0"
+        type: string
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build-macos:
+    name: Build macOS .app and DMG
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install "pyinstaller>=6.0"
+
+      - name: Install create-dmg
+        run: brew install create-dmg
+
+      - name: Read version
+        id: version
+        run: |
+          VERSION=$(python -c "from videcook import __version__; print(__version__)")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Generate .icns icon from .png
+        run: |
+          ICONSET="assets/videcook.iconset"
+          rm -rf "$ICONSET"
+          mkdir -p "$ICONSET"
+          PNG="assets/videcook.png"
+          sips -z 16 16     "$PNG" --out "$ICONSET/icon_16x16.png"       > /dev/null
+          sips -z 32 32     "$PNG" --out "$ICONSET/icon_16x16@2x.png"    > /dev/null
+          sips -z 32 32     "$PNG" --out "$ICONSET/icon_32x32.png"       > /dev/null
+          sips -z 64 64     "$PNG" --out "$ICONSET/icon_32x32@2x.png"    > /dev/null
+          sips -z 128 128   "$PNG" --out "$ICONSET/icon_128x128.png"     > /dev/null
+          sips -z 256 256   "$PNG" --out "$ICONSET/icon_128x128@2x.png"  > /dev/null
+          sips -z 256 256   "$PNG" --out "$ICONSET/icon_256x256.png"     > /dev/null
+          sips -z 512 512   "$PNG" --out "$ICONSET/icon_256x256@2x.png"  > /dev/null
+          sips -z 512 512   "$PNG" --out "$ICONSET/icon_512x512.png"     > /dev/null
+          sips -z 1024 1024 "$PNG" --out "$ICONSET/icon_512x512@2x.png"  > /dev/null
+          iconutil -c icns "$ICONSET" -o "assets/videcook.icns"
+          rm -rf "$ICONSET"
+
+      - name: Build with PyInstaller
+        run: |
+          pyinstaller --clean --noconfirm \
+            --windowed \
+            --osx-bundle-identifier com.anilberkayalici.videcook \
+            Videcook.spec
+
+      - name: Verify .app bundle
+        run: |
+          ls -la dist/
+          test -d dist/Videcook.app || (echo "Videcook.app not found" && exit 1)
+          /usr/libexec/PlistBuddy -c "Print :CFBundleIdentifier" dist/Videcook.app/Contents/Info.plist
+
+      - name: Create DMG
+        id: dmg
+        run: |
+          OUTPUT="release/Videcook-v${{ steps.version.outputs.version }}-macos.dmg"
+          rm -f "$OUTPUT"
+          create-dmg \
+            --volname "Videcook" \
+            --volicon "assets/videcook.icns" \
+            --window-pos 200 120 \
+            --window-size 800 400 \
+            --icon-size 100 \
+            --icon "Videcook.app" 200 190 \
+            --hide-extension "Videcook.app" \
+            --app-drop-link 600 185 \
+            --no-internet-enable \
+            "$OUTPUT" \
+            "dist/Videcook.app" \
+            || CREATE_DMG_FAILED=1
+
+          if [[ ! -f "$OUTPUT" ]]; then
+            echo "create-dmg failed, falling back to hdiutil"
+            hdiutil create -volname "Videcook" -srcfolder "dist/Videcook.app" \
+              -ov -format UDZO "$OUTPUT"
+          fi
+          echo "dmg_path=$OUTPUT" >> "$GITHUB_OUTPUT"
+
+      - name: Upload DMG to GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [[ -n "${{ inputs.release_tag }}" ]]; then
+            RELEASE_TAG="${{ inputs.release_tag }}"
+          else
+            RELEASE_TAG="${GITHUB_REF_NAME}"
+          fi
+          if [[ -z "$RELEASE_TAG" ]]; then
+            RELEASE_TAG="v${{ steps.version.outputs.version }}"
+          fi
+          echo "Uploading to release: $RELEASE_TAG"
+          gh release upload "$RELEASE_TAG" "${{ steps.dmg.outputs.dmg_path }}" --clobber

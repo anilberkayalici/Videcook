@@ -1,65 +1,120 @@
-"""Windows DPAPI storage for the user's Groq API key."""
+"""Cross-platform secure storage for the user's Groq API key.
+
+Windows: DPAPI (CryptProtectData / CryptUnprotectData)
+Linux:   file permissions (chmod 600) + restricted directory
+"""
 
 from __future__ import annotations
 
-import ctypes
 import os
-from ctypes import wintypes
+import stat
 from pathlib import Path
 
-
-class _DataBlob(ctypes.Structure):
-    _fields_ = [("cbData", wintypes.DWORD), ("pbData", ctypes.POINTER(ctypes.c_byte))]
+from videcook.paths import get_user_data_dir
 
 
-def _path(create: bool = False) -> Path:
-    root = Path(os.environ.get("LOCALAPPDATA", os.environ.get("APPDATA", Path.home()))) / "Videcook"
-    if create:
-        root.mkdir(parents=True, exist_ok=True)
-    return root / "groq_api_key.bin"
+def _store_dir() -> Path:
+    path = get_user_data_dir() / "secure"
+    if os.name != "nt":
+        path.mkdir(mode=0o700, parents=True, exist_ok=True)
+    else:
+        path.mkdir(parents=True, exist_ok=True)
+    return path
 
 
-def _blob(data: bytes) -> tuple[_DataBlob, object]:
-    buffer = (ctypes.c_byte * len(data)).from_buffer_copy(data)
-    return _DataBlob(len(data), buffer), buffer
+def _key_path() -> Path:
+    return _store_dir() / "groq_api_key.bin"
 
 
 def save_groq_api_key(api_key: str) -> None:
-    """Encrypt and persist the key for the current Windows user only."""
-    if os.name != "nt":
-        raise RuntimeError("Güvenli anahtar deposu yalnızca Windows'ta destekleniyor.")
-    value = api_key.strip().encode("utf-8")
+    """Persist the key using platform-appropriate protection."""
+    value = api_key.strip()
     if not value:
-        raise ValueError("API anahtarı boş olamaz.")
-    source, _source_buffer = _blob(value)
-    encrypted = _DataBlob()
-    crypt32 = ctypes.windll.crypt32
-    if not crypt32.CryptProtectData(ctypes.byref(source), "Videcook Groq API key", None, None, None, 0, ctypes.byref(encrypted)):
-        raise ctypes.WinError()
-    try:
-        _path(create=True).write_bytes(ctypes.string_at(encrypted.pbData, encrypted.cbData))
-    finally:
-        ctypes.windll.kernel32.LocalFree(encrypted.pbData)
+        raise ValueError("API key must not be empty.")
+
+    if os.name == "nt":
+        _save_windows(value)
+    else:
+        _save_linux(value)
 
 
 def load_groq_api_key() -> str:
-    """Return the current user's decrypted key, or an empty string when unset."""
-    if os.name != "nt":
-        return ""
-    path = _path()
+    """Return the current user's key, or an empty string when unset."""
+    path = _key_path()
     if not path.is_file():
         return ""
-    encrypted, _encrypted_buffer = _blob(path.read_bytes())
-    decrypted = _DataBlob()
-    crypt32 = ctypes.windll.crypt32
-    if not crypt32.CryptUnprotectData(ctypes.byref(encrypted), None, None, None, None, 0, ctypes.byref(decrypted)):
-        raise ctypes.WinError()
-    try:
-        return ctypes.string_at(decrypted.pbData, decrypted.cbData).decode("utf-8")
-    finally:
-        ctypes.windll.kernel32.LocalFree(decrypted.pbData)
+
+    if os.name == "nt":
+        return _load_windows(path)
+    return _load_linux(path)
 
 
 def remove_groq_api_key() -> None:
     """Remove the encrypted local key, if it exists."""
-    _path().unlink(missing_ok=True)
+    _key_path().unlink(missing_ok=True)
+
+
+# ------------------------------------------------------------------
+# Windows DPAPI
+# ------------------------------------------------------------------
+
+if os.name == "nt":
+    import ctypes
+    from ctypes import wintypes
+
+    class _DataBlob(ctypes.Structure):
+        _fields_ = [("cbData", wintypes.DWORD), ("pbData", ctypes.POINTER(ctypes.c_byte))]
+
+    def _blob(data: bytes) -> tuple[_DataBlob, object]:
+        buffer = (ctypes.c_byte * len(data)).from_buffer_copy(data)
+        return _DataBlob(len(data), buffer), buffer
+
+    def _save_windows(value: str) -> None:
+        source, _source_buffer = _blob(value.encode("utf-8"))
+        encrypted = _DataBlob()
+        crypt32 = ctypes.windll.crypt32
+        if not crypt32.CryptProtectData(
+            ctypes.byref(source), "Videcook Groq API key",
+            None, None, None, 0, ctypes.byref(encrypted),
+        ):
+            raise ctypes.WinError()
+        try:
+            _key_path().write_bytes(ctypes.string_at(encrypted.pbData, encrypted.cbData))
+        finally:
+            ctypes.windll.kernel32.LocalFree(encrypted.pbData)
+
+    def _load_windows(path: Path) -> str:
+        encrypted, _encrypted_buffer = _blob(path.read_bytes())
+        decrypted = _DataBlob()
+        crypt32 = ctypes.windll.crypt32
+        if not crypt32.CryptUnprotectData(
+            ctypes.byref(encrypted), None, None, None, None, 0, ctypes.byref(decrypted),
+        ):
+            raise ctypes.WinError()
+        try:
+            return ctypes.string_at(decrypted.pbData, decrypted.cbData).decode("utf-8")
+        finally:
+            ctypes.windll.kernel32.LocalFree(decrypted.pbData)
+
+else:
+    # Linux stubs – the real implementations are below
+    pass
+
+
+# ------------------------------------------------------------------
+# Linux chmod 600
+# ------------------------------------------------------------------
+
+import base64
+
+
+def _save_linux(value: str) -> None:
+    encoded = base64.b64encode(value.encode("utf-8")).decode("ascii")
+    path = _key_path()
+    path.write_text(encoded, encoding="ascii")
+    os.chmod(path, stat.S_IRUSR | stat.S_IWUSR)
+
+
+def _load_linux(path: Path) -> str:
+    encoded = path.read_text(encoding="ascii")
+    return base64.b64decode(encoded.encode("ascii")).decode("utf-8")

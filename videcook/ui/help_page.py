@@ -1,4 +1,4 @@
-"""Help page with tabbed guides for Video Download, Audio Download, and Subtitles."""
+"""Help page with tabbed guides for Video Download, Audio Download, Subtitles, and Translate."""
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
@@ -18,10 +18,20 @@ from videcook.utils.i18n import LanguageManager
 class HelpPage(QWidget):
     """Scrollable help page with tabbed guides for each feature."""
 
-    GUIDES = ["video", "audio", "subtitle"]
+    GUIDES = ["video", "audio", "subtitle", "translate", "converter"]
     GUIDE_VIDEO = 0
     GUIDE_AUDIO = 1
     GUIDE_SUBTITLE = 2
+    GUIDE_TRANSLATE = 3
+    GUIDE_CONVERTER = 4
+
+    _STEPS = {
+        "video": 7,
+        "audio": 7,
+        "subtitle": 7,
+        "translate": 5,
+        "converter": 5,
+    }
 
     def __init__(self, i18n: LanguageManager, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -64,7 +74,8 @@ class HelpPage(QWidget):
 
         tab_row = QHBoxLayout()
         tab_row.setSpacing(8)
-        for idx in range(3):
+        guide_count = len(self.GUIDES)
+        for idx in range(guide_count):
             btn = QPushButton()
             btn.setObjectName("segButton")
             btn.setCheckable(True)
@@ -86,7 +97,7 @@ class HelpPage(QWidget):
         self._guide_stack = QStackedWidget()
         card_layout.addWidget(self._guide_stack)
 
-        for guide_idx in range(3):
+        for guide_idx, guide_key in enumerate(self.GUIDES):
             guide_widget = QWidget()
             guide_layout = QVBoxLayout(guide_widget)
             guide_layout.setSpacing(10)
@@ -97,7 +108,7 @@ class HelpPage(QWidget):
             steps_layout.setSpacing(10)
             steps_layout.setContentsMargins(0, 0, 0, 0)
 
-            step_count = 7
+            step_count = self._STEPS[guide_key]
             pairs: list[tuple[QLabel, QLabel]] = []
             for _ in range(step_count):
                 row_widget = QWidget()
@@ -152,7 +163,13 @@ class HelpPage(QWidget):
         t = self._i18n.get_text
         self._title.setText(t("help.title"))
 
-        tab_labels = ["help.tab_video", "help.tab_audio", "help.tab_subtitle"]
+        tab_labels = [
+            "help.tab_video",
+            "help.tab_audio",
+            "help.tab_subtitle",
+            "help.tab_translate",
+            "help.tab_converter",
+        ]
         for btn, key in zip(self._tab_buttons, tab_labels):
             btn.setText(t(key))
 

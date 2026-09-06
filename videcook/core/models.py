@@ -29,10 +29,15 @@ class QualityOption(Enum):
 
 
 class AudioFormat(Enum):
-    """Audio container formats for extraction."""
+    """Audio container formats for extraction.
+
+    Note: M4A is intentionally absent. The yt-dlp ``--audio-format aac``
+    option produces an M4A container with AAC inside, so a separate
+    M4A entry would be redundant. AAC is exposed for users who need a
+    raw ADTS ``.aac`` stream (e.g. legacy media players).
+    """
 
     MP3 = "mp3"
-    M4A = "m4a"
     OPUS = "opus"
     AAC = "aac"
     FLAC = "flac"
@@ -53,11 +58,22 @@ class DownloadRequest:
     url: str
     cookie_file: Path | None
     output_folder: Path
-    quality: QualityOption
+    quality: str
     mode: DownloadMode
     download_type: DownloadType = DownloadType.VIDEO
-    audio_format: AudioFormat = AudioFormat.MP3
+    audio_format: AudioFormat = AudioFormat.WAV
+    audio_quality: str = "320"
     embed_thumbnail: bool = False
+    # When True, force the final file to use H.264 (avc1) video even if
+    # the source stream is VP9/AV1. The video stream is re-encoded with
+    # libx264; the audio stream is copied (no quality loss). The format
+    # selector above already prefers avc1 streams, so this only triggers
+    # for 1440p/4K where YouTube only serves VP9/AV1.
+    force_h264_transcode: bool = False
+    # > 1 when the same video is being re-downloaded; appended as a
+    # suffix to the output filename so repeated clicks produce
+    # ``video.mp4``, ``video (#2).mp4``, ``video (#3).mp4``, …
+    download_counter: int = 0
 
 
 @dataclass

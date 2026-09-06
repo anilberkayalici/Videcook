@@ -11,6 +11,8 @@ Public API is split into two layers:
 
 from __future__ import annotations
 
+import os
+import shutil
 import tempfile
 import time
 import urllib.request
@@ -20,21 +22,33 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from videcook import __version__
+from videcook.paths import _exe
 
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
 
-_YTDLP_URL = (
-    "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe"
-)
-_FFMPEG_URL = (
-    "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/"
-    "ffmpeg-master-latest-win64-gpl.zip"
-)
+if os.name == "nt":
+    _YTDLP_URL = "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe"
+    _FFMPEG_URL = (
+        "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/"
+        "ffmpeg-master-latest-win64-gpl.zip"
+    )
+    _FFMPEG_ARCHIVE_EXT = ".zip"
+else:
+    _YTDLP_URL = "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp"
+    _FFMPEG_URL = (
+        "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/"
+        "ffmpeg-master-latest-linux64-gpl.tar.xz"
+    )
+    _FFMPEG_ARCHIVE_EXT = ".tar.xz"
 
 _YTDLP_SOURCE = "github.com/yt-dlp/yt-dlp/releases"
 _FFMPEG_SOURCE = "github.com/BtbN/FFmpeg-Builds/releases"
+
+YTDLP_BINARY = _exe("yt-dlp")
+FFMPEG_BINARY = _exe("ffmpeg")
+FFPROBE_BINARY = _exe("ffprobe")
 
 CHUNK = 65536
 
@@ -128,14 +142,14 @@ def _download_ffmpeg_zip(
     ffprobe_dest: Path,
     on_progress: Callable[[DownloadProgress], None] | None = None,
 ) -> tuple[Path, Path]:
-    """Download FFmpeg ZIP, extract ffmpeg.exe & ffprobe.exe."""
+    """Download FFmpeg archive, extract ffmpeg & ffprobe binaries."""
     if ffmpeg_dest.exists() and ffprobe_dest.exists():
         return ffmpeg_dest, ffprobe_dest
 
     zip_task = DownloadTask(
         url=url,
-        dest=Path(tempfile.gettempdir()) / "videcook_ffmpeg.zip",
-        label="ffmpeg.zip",
+        dest=Path(tempfile.gettempdir()) / f"videcook_ffmpeg{_FFMPEG_ARCHIVE_EXT}",
+        label=f"ffmpeg{_FFMPEG_ARCHIVE_EXT}",
         source_display=_FFMPEG_SOURCE,
     )
     zip_path = _download_file(zip_task, on_progress=on_progress)
@@ -144,19 +158,18 @@ def _download_ffmpeg_zip(
     try:
         with zipfile.ZipFile(zip_path, "r") as zf:
             ffmpeg_member = next(
-                (n for n in zf.namelist() if n.endswith("/ffmpeg.exe")), None
+                (n for n in zf.namelist() if n.endswith(f"/{FFMPEG_BINARY}")), None
             )
             ffprobe_member = next(
-                (n for n in zf.namelist() if n.endswith("/ffprobe.exe")), None
+                (n for n in zf.namelist() if n.endswith(f"/{FFPROBE_BINARY}")), None
             )
             if not ffmpeg_member or not ffprobe_member:
                 raise RuntimeError(
-                    "Could not find ffmpeg.exe / ffprobe.exe in the archive"
+                    f"Could not find {FFMPEG_BINARY} / {FFPROBE_BINARY} in the archive"
                 )
             with tempfile.TemporaryDirectory() as tmp:
                 zf.extract(ffmpeg_member, tmp)
                 zf.extract(ffprobe_member, tmp)
-                import shutil
                 shutil.move(str(Path(tmp) / ffmpeg_member), str(ffmpeg_dest))
                 shutil.move(str(Path(tmp) / ffprobe_member), str(ffprobe_dest))
     finally:
@@ -178,8 +191,8 @@ def build_ytdlp_tasks(bin_dir: Path) -> list[DownloadTask]:
     return [
         DownloadTask(
             url=_YTDLP_URL,
-            dest=bin_dir / "yt-dlp.exe",
-            label="yt-dlp.exe",
+            dest=bin_dir / YTDLP_BINARY,
+            label=YTDLP_BINARY,
             source_display=_YTDLP_SOURCE,
         )
     ]
@@ -187,7 +200,7 @@ def build_ytdlp_tasks(bin_dir: Path) -> list[DownloadTask]:
 
 def build_ffmpeg_tasks(bin_dir: Path) -> tuple[Path, Path]:
     """Return the (ffmpeg_dest, ffprobe_dest) pair for FFmpeg download."""
-    return (bin_dir / "ffmpeg.exe", bin_dir / "ffprobe.exe")
+    return (bin_dir / FFMPEG_BINARY, bin_dir / FFPROBE_BINARY)
 
 
 def get_ffmpeg_url() -> str:
@@ -197,8 +210,8 @@ def get_ffmpeg_url() -> str:
 def get_expected_size() -> dict[str, int]:
     """Estimated download sizes in bytes. Actual values vary per release."""
     return {
-        "yt-dlp.exe": 15 * 1024 * 1024,    # ~15 MB
-        "ffmpeg.zip": 90 * 1024 * 1024,    # ~90 MB (compressed)
+        YTDLP_BINARY: 15 * 1024 * 1024,
+        f"ffmpeg{_FFMPEG_ARCHIVE_EXT}": 90 * 1024 * 1024,
     }
 
 
@@ -241,8 +254,8 @@ class BinaryDownloadWorker(QObject):
         self._bin_dir.mkdir(parents=True, exist_ok=True)
         tasks: list[tuple[DownloadTask, str]] = []  # (task, kind)
         ffmpeg_url = _FFMPEG_URL
-        ffmpeg_dest = self._bin_dir / "ffmpeg.exe"
-        ffprobe_dest = self._bin_dir / "ffprobe.exe"
+        ffmpeg_dest = self._bin_dir / FFMPEG_BINARY
+        ffprobe_dest = self._bin_dir / FFPROBE_BINARY
 
         if self._download_ytdlp:
             for t in build_ytdlp_tasks(self._bin_dir):
@@ -253,8 +266,8 @@ class BinaryDownloadWorker(QObject):
                 (
                     DownloadTask(
                         url=ffmpeg_url,
-                        dest=Path(tempfile.gettempdir()) / "videcook_ffmpeg.zip",
-                        label="ffmpeg.zip",
+                        dest=Path(tempfile.gettempdir()) / f"videcook_ffmpeg{_FFMPEG_ARCHIVE_EXT}",
+                        label=f"ffmpeg{_FFMPEG_ARCHIVE_EXT}",
                         source_display=_FFMPEG_SOURCE,
                     ),
                     "ffmpeg_zip",

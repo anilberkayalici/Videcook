@@ -1,243 +1,120 @@
-# Videcook
+# Videcook — v0.6.0
 
-**TR:** Videcook, yt-dlp + cookies.txt + FFmpeg kullanarak video indirmeyi kolaylaştıran; kendi Groq API anahtarınızla İngilizce SRT altyazı üretebilen; Windows ve Linux üzerinde çalışan bir masaüstü uygulamasıdır. Kullanıcıların komut satırı (CMD/Terminal) ile uğraşmasına gerek kalmaz.
+[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey.svg)]()
+[![Release](https://img.shields.io/github/v/release/anilberkayalici/Videcook?color=purple)](https://github.com/anilberkayalici/Videcook/releases)
 
-**EN:** Videcook is a cross-platform desktop application that simplifies video downloading using yt-dlp + cookies.txt + FFmpeg, and can create English SRT subtitles using the user's own Groq API key. It runs on Windows and Linux. Users never need to touch the command line.
+---
 
-## Languages
+**TR:** **Videcook**, yt-dlp + FFmpeg gücüyle yüksek kaliteli video/ses indirme, Spotify C++ `pedalboard` DSP motoru ile **canlı stüdyo kalitesinde Ton (Pitch) & BPM ayarlama ve akıllı beat eşleme**, Groq Whisper ile otomatik altyazı ve çeviri, MoviePy tabanlı AI video kurgulama, format dönüştürme ve çözünürlük yükseltme yapabilen modern, hepsi-bir-arada masaüstü stüdyosudur.
 
-Videcook supports **Turkish** (default) and **English**. A TR/EN toggle in the header switches all UI text instantly. The selected language is remembered across restarts.
+**EN:** **Videcook** is an all-in-one cross-platform multimedia studio featuring yt-dlp + FFmpeg downloading, real-time zero-latency **Pitch & BPM shifting with smart harmonic beat matching** powered by Spotify C++ `pedalboard` DSP, AI-powered subtitle generation & translation via Groq Whisper, MoviePy video editing, format conversion, and upscale tools.
 
-## Supported Platforms
+---
 
-- **Windows:** Windows 10 / 11 (64-bit) portable ZIP
+## 🌟 v0.6.0 Öne Çıkan Yenilikler / What's New in v0.6.0
+
+### 🎛️ 1. Gerçek Zamanlı Stüdyo Ton (Pitch) & BPM Motoru (Real-time DSP Studio)
+- **Spotify C++ `pedalboard` & WASAPI Entegrasyonu:** Müzik çalarken anında transpoze yapın, şarkının hızını (BPM) değiştirin — sıfır gecikme, sıfır takılma.
+- **Akıllı Harmonik Eşleme (Smart Camelot Key Match):** Referans parçanın müzikal tonunu analiz eder; Camelot çarkına göre en uyumlu yarı ton farkını (-12 ile +12) otomatik hesaplar.
+- **Müzikal Oktav Duyarlı BPM Eşleme (Optimal Tempo Match):** Örneğin 73.6 BPM'lik bir vokali 171 BPM'lik bir drill beat'e uydururken aşırı hızlandırmak yerine, müzikal olarak kusursuz olan **Half-Time (85.5 BPM / +16.2%)** hızını akıllıca önerir.
+- **İkiz Referans Oynatıcı (Emerald Twin Player):** Referans parçayı dinleyebilmeniz için bağımsız zümrüt yeşili dalga boyu oynatıcısı, bağımsız ses kontrolü ve karşılıklı akıllı susturma (A/B dinleme testi).
+- **16K Overlap-Add Hann Filtresi & -0.2 dBFS Stüdyo Sınırlayıcı (True Peak Limiter):** Düşük bas frekanslarında dahi faz çatlamasını (pıtırtı/çatırtı seslerini) ortadan kaldıran 16.384 örnek blok boyutu ve çıkışta patlamayı önleyen stüdyo sınırlayıcısı ile kristal netliğinde dışa aktarım.
+- **880px Geniş Stüdyo Konsolu:** Yan yana yerleştirilmiş Pitch ve BPM panelleri, interaktif tıklanabilir dalga boyları ve ekran altına sabitlenmiş `Yeni Haliyle Kaydet` butonu.
+
+### 🎬 2. Yapay Zeka Video Düzenleyici (AI Video Editor)
+- FFmpeg ve MoviePy 2.0 tabanlı video kesme, klip birleştirme.
+- Otomatik ses seviyesi dengeleme ve arkaplan müziği (ducking / background music mix).
+
+### 🌍 3. Altyazı & Çeviri Merkezi (Subtitle Translate Hub)
+- Groq Whisper ile saniyeler içinde konuşmadan İngilizce veya Türkçe `.srt` ve `.vtt` altyazı üretimi.
+- Güvenli API anahtarı yönetimi (Windows DPAPI / Linux chmod 600).
+
+### 🔄 4. Evrensel Medya & Belge Dönüştürücü (Converter)
+- MP4, MKV, AVI, MOV, WebM, MP3, WAV, FLAC, AAC, OPUS formatları arasında kayıpsız dönüştürme.
+- PDF ve belge formatları desteği.
+
+### 🚀 5. AI Çözünürlük Yükseltme (Upscayl / Super Resolution)
+- NCNN AI modelleriyle fotoğraflar ve video karelerinde 2x/4x netleştirme ve kalite artırma.
+
+### 📜 6. İndirilenler & Geçmiş (History)
+- Tamamlanan tüm indirme, dönüştürme ve düzenleme işlemlerinin listelendiği, tek tıkla dosya veya klasöre erişim sağlayan geçmiş ekranı.
+
+---
+
+## 💻 Desteklenen İşletim Sistemleri / Supported Platforms
+
+- **Windows:** Windows 10 / 11 (64-bit) — Kurulum gerektirmeyen taşınabilir (Portable) ZIP
 - **Linux:** x86_64 AppImage
+- **macOS:** Apple Silicon / Intel DMG
 
-Pre-built releases for both platforms are available from the [GitHub Releases](https://github.com/anilberkayalici/Videcook/releases) page.
+---
 
-## Features
+## 🛠️ Kurulum & Geliştirme (Setup & Development)
 
-- **Cross-platform GUI** — Built with PySide6; runs on Windows and Linux.
-- **Video downloads** — Quality presets: Best, 1080p, 720p, 480p.
-- **Audio-only downloads** — Extract audio to MP3, M4A, OPUS, AAC, FLAC, or WAV.
-- **Playlist support** — Automatically detects playlist URLs and handles them as a single job.
-- **Members-only / private videos** — Optional `cookies.txt` support for authenticated downloads.
-- **Embed thumbnail & metadata** — For audio downloads.
-- **Advanced yt-dlp arguments** — Power users can add custom flags such as `--limit-rate 5M` or `--sleep-interval 3`.
-- **In-app binary management** — First-run setup wizard downloads yt-dlp, FFmpeg, and FFprobe automatically.
-- **yt-dlp update checker** — Check the installed yt-dlp version against the latest GitHub release and update in one click.
-- **English SRT subtitles** — Convert any audio file to English `.srt` using Groq Whisper.
-- **Secure API key storage** — Groq API key is encrypted on Windows (DPAPI) and protected on Linux (chmod 600).
-- **Preference persistence** — Last output folder, quality choice, audio format, embed-thumbnail option, language, and advanced args are all remembered.
-- **Modern dark wine theme** — Updated dark UI with sidebar navigation.
-- **Help page** — Built-in guides for download, subtitle, and settings workflows.
-- **Cancellation & cleanup** — Downloads and subtitle jobs can be cancelled cleanly without leaking threads or leaving zombie processes.
+### Gereksinimler (Prerequisites)
+- Python 3.11 veya üzeri
+- Git
+- Windows, Linux veya macOS
 
-## Architecture
-
-- **`videcook/core/`** — URL/cookie/path validation, yt-dlp command construction (safe argument lists, never shell strings), progress output parsing, playlist detection, and subtitle utilities.
-- **`videcook/services/`** — Binary locator/downloader, download process (subprocess with cancellation), Groq Whisper transcription, secure API-key storage, and yt-dlp update checker.
-- **`videcook/ui/`** — PySide6 dark-themed GUI with sidebar navigation, download page, subtitle page, settings page, help page, setup wizard, and off-thread workers.
-- **`locales/`** — Turkish (default) and English JSON string tables.
-
-Cookie files are **never** read, stored, or logged by Videcook.
-
-## Development
-
-### Prerequisites
-
-- Python 3.11 or later
-- Windows 10 / 11 or Linux
-
-### Setup
+### Kaynak Koddan Çalıştırma
 
 ```bash
-git clone https://github.com/anilberkayalici/Videcook.git videcook
-cd videcook
-python -m pip install -r requirements.txt
-```
+# 1. Depoyu klonlayın
+git clone https://github.com/anilberkayalici/Videcook.git
+cd Videcook
 
-### Run (Development)
+# 2. Bağımlılıkları yükleyin
+python -m pip install --upgrade pip
+pip install -r requirements.txt
 
-```bash
+# 3. Gerekli motorları indirin (yt-dlp, FFmpeg)
+python scripts/download_binaries.py --all
+
+# 4. Uygulamayı başlatın
 python -m videcook.main
 ```
 
-The app will launch in its dark-themed GUI. You can toggle Turkish/English with the **TR/EN** button in the header.
+---
 
-No real downloads can happen until helper binaries are installed (see below).
+## 🧪 Testler (Automated Tests)
 
-### Tests
+Uygulama kapsamlı birim ve UI duman (smoke) testleri ile korunmaktadır:
 
 ```bash
-python -m pytest -q
-```
+# Tüm testleri çalıştırın
+pytest
 
-UI smoke tests use `pytest-qt` and do **not** require binaries or network access.
+# Sadece Ton & BPM stüdyo testlerini çalıştırın
+pytest tests/test_pitch_tempo.py
+
+# Arayüz duman testlerini çalıştırın
+pytest tests/test_ui_smoke.py
+```
 
 ---
 
-## Required Binaries for Downloading
+## 📦 Taşınabilir Windows Paketi Oluşturma (Portable Build)
 
-Videcook wraps these command-line tools as subprocesses:
+Bağımsız, kurulum gerektirmeyen bir `.exe` klasörü oluşturmak için:
 
-| Tool | Windows | Linux | Purpose |
-|------|---------|-------|---------|
-| [yt-dlp](https://github.com/yt-dlp/yt-dlp) | `yt-dlp.exe` | `yt-dlp` | Video download engine |
-| [FFmpeg](https://ffmpeg.org/) | `ffmpeg.exe` | `ffmpeg` | Format conversion / muxing |
-| [FFprobe](https://ffmpeg.org/) | `ffprobe.exe` | `ffprobe` | Media inspection |
-
-### Method 1 — First-Run Setup Wizard
-
-When binaries are missing, Videcook shows a setup wizard. Click the download button and the app will fetch the official yt-dlp and FFmpeg/FFprobe builds automatically.
-
-### Method 2 — Download Script
-
-```bash
-python scripts/download_binaries.py --all
-```
-
-This downloads pre-built binaries from the official GitHub releases of yt-dlp and BtbN/FFmpeg-Builds for the current platform.
-
-### Method 3 — Manual Placement
-
-Place the files inside the `bin/` folder:
-
-```
-bin/
-  yt-dlp      (yt-dlp.exe on Windows)
-  ffmpeg      (ffmpeg.exe on Windows)
-  ffprobe     (ffprobe.exe on Windows)
-```
-
-The app will auto-detect them on launch. If they are missing, the Settings page will show **MISSING** for each binary and the Download button will show a helpful error message instead of crashing.
-
-Note: `bin/` is git-ignored (except `.gitkeep`). These files are **never** committed to the repository.
-
----
-
-## Download Page
-
-The main download page lets you:
-
-1. Paste a video or playlist URL.
-2. Choose **Video** or **Audio** mode.
-3. Pick a quality (video) or audio format.
-4. Toggle **Members-only** to attach a `cookies.txt` file for authenticated content.
-5. Choose the output folder.
-6. Start the download and monitor progress, speed, and logs in real time.
-
-### Advanced yt-dlp Arguments
-
-Open **Settings** and enter extra flags in the **Advanced yt-dlp arguments** field. These are appended safely to every yt-dlp command. Example:
-
-```text
---limit-rate 5M --sleep-interval 3
-```
-
-Arguments are parsed with `shlex`, so quoted values such as `--proxy "http://..."` are handled correctly.
-
----
-
-## English SRT Subtitles
-
-1. Obtain a personal Groq API key and save it from **Settings**.
-2. Open **Subtitles**, choose an audio file, and choose the target `.srt` path.
-3. Click **Create SRT**.
-
-Videcook converts the audio to a compact temporary format, sends sequential chunks to Groq Whisper, and creates an English `.srt` file.
-
-The API key is stored using platform-native protection:
-
-- **Windows:** DPAPI (CryptProtectData / CryptUnprotectData)
-- **Linux:** file permissions `chmod 600` inside a restricted directory
-
-It is never included in the portable package or GitHub repository.
-
----
-
-## Building a Portable Windows Distribution
-
-### Build
-
-```bash
+```cmd
 scripts\build_portable.bat
 ```
 
-This runs PyInstaller with `Videcook.spec` and produces:
-
-```
-dist/
-  Videcook/
-    Videcook.exe
-    _internal/    ← Qt, Python, Groq and bundled resources
-    locales/      ← tr.json, en.json
-    README.md
-    THIRD_PARTY_LICENSES.md
-```
-
-Zip and distribute the entire `dist/Videcook/` folder. No installation is required: users extract the ZIP and double-click `Videcook.exe`.
-
-### Important
-
-- The portable folder is **not** a single `.exe`. Distribute the whole folder inside a ZIP, and tell users to extract it before opening the app.
-- Microsoft Defender may flag unsigned PyInstaller files. Adding a code-signing certificate to `Videcook.spec` can resolve this for distribution.
-- If you update binaries, re-run the build script.
+İşlem tamamlandığında `dist\Videcook\Videcook.exe` dosyası hazır hale gelir. `dist\Videcook` klasörünü ZIP yaparak dilediğiniz bilgisayarda doğrudan çalıştırabilirsiniz.
 
 ---
 
-## Building a Linux AppImage
+## 🔒 Güvenlik & Gizlilik İlkeleri (Privacy & Safety)
 
-AppImage builds must be created on a Linux machine because PyInstaller and `appimagetool` need native Linux tooling.
-
-### Build
-
-```bash
-scripts/build_linux.sh
-```
-
-This will:
-
-1. Install Python dependencies.
-2. Build the portable folder with PyInstaller.
-3. Prepare an AppDir from `dist/Videcook/`.
-4. Create `release/Videcook-v{VERSION}-linux-x86_64.AppImage`.
-
-### Prerequisites
-
-- `python3` and `pip`
-- `pyinstaller`
-- `appimagetool` from [AppImageKit releases](https://github.com/AppImage/AppImageKit/releases)
-
-### Run the AppImage
-
-```bash
-chmod +x Videcook-v0.2.0-linux-x86_64.AppImage
-./Videcook-v0.2.0-linux-x86_64.AppImage
-```
-
-If the AppImage does not start, install `libfuse2` on your distribution. Downloaded helper binaries and user preferences are stored in the platform-appropriate user data directory (`~/.local/share/Videcook` on Linux).
+1. **Çerez Güvenliği (Cookie Safety):** `cookies.txt` dosyalarının içeriği asla okunmaz, saklanmaz veya sunuculara iletilmez. Yalnızca dosya adı arayüzde gösterilir.
+2. **API Anahtarı Güvenliği:** Groq API anahtarları Windows üzerinde **DPAPI** (CryptProtectData) ile şifrelenir; Linux üzerinde `chmod 600` ile korunur.
+3. **Kalıntısız Temizlik:** İptal edilen indirme ve dönüştürme işlemlerinde geçici dosyalar ve arka plan işlemleri (zombie processes) anında temizlenir.
 
 ---
 
-## Data & Privacy
+## 📄 Lisans (License)
 
-- **Cookie files** are never read, stored, or logged by Videcook. Only the filename appears in the UI; the full path is never logged.
-- **Groq API keys** are encrypted/protected locally and never leave the device except when sent to Groq's API for transcription.
-- **Preferences, logs, and downloaded helper binaries** are stored in the user's data directory, never inside the application folder.
-
-## Cookie Safety
-
-Videcook follows strict cookie-handling rules verified by automated tests:
-
-1. **Never reads** cookie file contents.
-2. **Never persists** cookie file paths across sessions.
-3. **Never logs** full cookie file paths in the log panel.
-4. Only the **filename** (e.g., `cookies.txt`) appears in the UI and logs.
-5. The internal cookie path reference is cleared after every download (success, failure, or cancellation).
-
----
-
-## License
-
-Videcook source code is available under the MIT License (see LICENSE file if present). Third-party licenses for yt-dlp, FFmpeg, and other bundled tools are documented in [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md).
+Bu proje [MIT Lisansı](LICENSE) ile lisanslanmıştır. Kullanılan üçüncü taraf araçların (yt-dlp, FFmpeg, Spotify Pedalboard) lisansları için [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md) dosyasına bakabilirsiniz.
